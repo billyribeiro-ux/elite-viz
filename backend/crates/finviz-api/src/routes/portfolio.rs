@@ -19,7 +19,10 @@ pub async fn summary(State(state): State<AppState>) -> Json<PortfolioSummary> {
     let mut cost_basis = 0.0;
 
     for p in state.positions() {
-        let last_price = state.quote(&p.symbol).map(|q| q.price).unwrap_or(p.avg_price);
+        let last_price = state
+            .quote(&p.symbol)
+            .map(|q| q.price)
+            .unwrap_or(p.avg_price);
         let mv = last_price * p.quantity;
         let cb = p.avg_price * p.quantity;
         let pnl = mv - cb;
@@ -33,7 +36,11 @@ pub async fn summary(State(state): State<AppState>) -> Json<PortfolioSummary> {
             market_value: round2(mv),
             cost_basis: round2(cb),
             unrealized_pnl: round2(pnl),
-            unrealized_pnl_pct: if cb != 0.0 { round2(pnl / cb * 100.0) } else { 0.0 },
+            unrealized_pnl_pct: if cb != 0.0 {
+                round2(pnl / cb * 100.0)
+            } else {
+                0.0
+            },
         });
     }
 

@@ -4,6 +4,7 @@ members = [
     "crates/finviz-types",
     "crates/finviz-screener",
     "crates/finviz-core",
+    "crates/finviz-db",
     "crates/finviz-api",
 ]
 

@@ -45,9 +45,6 @@ pub fn api_router() -> Router<AppState> {
             "/portfolio/positions",
             get(portfolio::list_positions).post(portfolio::upsert),
         )
-        .route(
-            "/portfolio/positions/{symbol}",
-            delete(portfolio::delete),
-        )
+        .route("/portfolio/positions/{symbol}", delete(portfolio::delete))
         .route("/portfolio/summary", get(portfolio::summary))
 }

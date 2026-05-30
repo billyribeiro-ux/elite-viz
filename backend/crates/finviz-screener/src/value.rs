@@ -19,7 +19,12 @@ pub trait Row {
 /// Canonicalize a user-written field name to its internal key, resolving the
 /// common aliases a trader would type (e.g. `marketcap`, `mktcap`).
 pub fn canonical_field(name: &str) -> &'static str {
-    match name.trim().to_ascii_lowercase().replace(['_', ' '], "").as_str() {
+    match name
+        .trim()
+        .to_ascii_lowercase()
+        .replace(['_', ' '], "")
+        .as_str()
+    {
         "symbol" | "ticker" => "symbol",
         "name" | "company" => "name",
         "sector" => "sector",

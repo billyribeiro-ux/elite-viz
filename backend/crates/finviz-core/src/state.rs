@@ -132,7 +132,14 @@ impl AppState {
     // ---- Watchlists --------------------------------------------------------
 
     pub fn watchlists(&self) -> Vec<Watchlist> {
-        let mut v: Vec<Watchlist> = self.inner.watchlists.read().unwrap().values().cloned().collect();
+        let mut v: Vec<Watchlist> = self
+            .inner
+            .watchlists
+            .read()
+            .unwrap()
+            .values()
+            .cloned()
+            .collect();
         v.sort_by(|a, b| a.name.cmp(&b.name));
         v
     }
@@ -148,7 +155,11 @@ impl AppState {
             name,
             symbols: normalize_symbols(symbols),
         };
-        self.inner.watchlists.write().unwrap().insert(id, wl.clone());
+        self.inner
+            .watchlists
+            .write()
+            .unwrap()
+            .insert(id, wl.clone());
         wl
     }
 
@@ -176,7 +187,14 @@ impl AppState {
     // ---- Portfolio ---------------------------------------------------------
 
     pub fn positions(&self) -> Vec<Position> {
-        let mut v: Vec<Position> = self.inner.positions.read().unwrap().values().cloned().collect();
+        let mut v: Vec<Position> = self
+            .inner
+            .positions
+            .read()
+            .unwrap()
+            .values()
+            .cloned()
+            .collect();
         v.sort_by(|a, b| a.symbol.cmp(&b.symbol));
         v
     }
@@ -270,11 +288,7 @@ fn synth_bars(symbol: &str, quote: &Quote, interval: Interval, count: usize) -> 
         .iter()
         .enumerate()
         .map(|(i, &close)| {
-            let open = if i == 0 {
-                close
-            } else {
-                closes[i - 1]
-            };
+            let open = if i == 0 { close } else { closes[i - 1] };
             let spread = close * (rng.next_unit() * 0.01);
             let high = open.max(close) + spread;
             let low = (open.min(close) - spread).max(0.01);
