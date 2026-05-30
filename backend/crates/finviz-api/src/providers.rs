@@ -8,7 +8,7 @@
 use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use finviz_types::{ProviderConfig, ProviderKind, Quote};
 use serde_json::Value;
 

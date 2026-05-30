@@ -106,8 +106,11 @@ async fn stream_screener(mut socket: WebSocket, state: AppState, q: ScreenerWsQu
                     }
                 }
                 let total = rows.len();
-                let mut matched: Vec<_> = match &expr {
-                    Some(e) => rows.into_iter().filter(|r| finviz_screener::evaluate(e, r)).collect(),
+                let mut matched: Vec<finviz_types::ScreenerRow> = match &expr {
+                    Some(e) => rows
+                        .into_iter()
+                        .filter(|r| finviz_screener::evaluate(e, r))
+                        .collect(),
                     None => rows,
                 };
                 let matched_count = matched.len();
