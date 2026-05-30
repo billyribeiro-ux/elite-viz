@@ -5,10 +5,11 @@ use std::str::FromStr;
 use axum::extract::{Path, Query, State};
 use axum::Json;
 use finviz_core::AppState;
-use finviz_types::{Bar, Fundamentals, Instrument, Interval, Quote};
+use finviz_types::{Bar, Fundamentals, Instrument, Interval, ProviderKind, Quote};
 use serde::Deserialize;
 
 use crate::error::{ApiResult, AppError};
+use crate::providers;
 
 pub async fn instruments(State(state): State<AppState>) -> Json<Vec<Instrument>> {
     Json(state.instruments().to_vec())
@@ -18,6 +19,17 @@ pub async fn quote(
     State(state): State<AppState>,
     Path(symbol): Path<String>,
 ) -> ApiResult<Json<Quote>> {
+    // When a live provider is configured, try it first and fall back to the
+    // seeded dataset if the upstream call fails.
+    let cfg = state.provider_config();
+    if cfg.enabled && cfg.kind != ProviderKind::Mock {
+        match providers::fetch_quote(&cfg, &symbol).await {
+            Ok(q) => return Ok(Json(q)),
+            Err(e) => {
+                tracing::warn!(error = %e, symbol = %symbol, "live quote failed; serving seed");
+            }
+        }
+    }
     state
         .quote(&symbol)
         .map(Json)

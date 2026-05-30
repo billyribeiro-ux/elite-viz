@@ -67,23 +67,26 @@ for the Postgres path. Fully unit-tested.
 
 ## 4. Phases (each ends compiling + runnable)
 
-- **Phase 1 — Backend vertical slice** ← *building now*
+- **Phase 1 — Backend vertical slice** ✅ *done*
   Workspace + types + error + seeded in-memory store + screener
-  lexer/parser/evaluator (with tests) + Axum server exposing `/healthz`,
-  market-data quotes/bars, and `/api/v1/screener/run`. CORS, tracing, graceful
-  shutdown. `cargo build` + `cargo test` green; server runs on :8080.
-- **Phase 2 — Frontend vertical slice**
-  SvelteKit app (pnpm, latest, Svelte 5 runes): screener dashboard with a
-  filter bar, sortable results table, quote tiles, sparklines; SvelteKit server
-  `load`/proxy to the Rust API. `pnpm build` green; UI renders live results.
-- **Phase 3 — Persistence**
-  PostgreSQL schema + sqlx migrations, repository layer, docker-compose,
-  screener SQL-compiler path, fundamentals/bars tables.
-- **Phase 4 — Realtime** WS quotes + screener-updates; frontend live tiles.
-- **Phase 5 — Auth & hardening** JWT, rate limiting, request IDs, error mapping.
-- **Phase 6 — Data adapters** Polygon.io / Alpaca behind a `MarketDataProvider`
-  trait; mock provider stays the default.
-- **Phase 7 — Ops** Dockerfiles, CI (build/test/clippy/svelte-check), k8s manifests.
+  lexer/parser/evaluator (tests) + Axum server (`/healthz`, market-data,
+  screener, indicators). CORS, tracing, graceful shutdown.
+- **Phase 2 — Frontend vertical slice** ✅ *done*
+  SvelteKit (pnpm, latest, Svelte 5 runes): screener dashboard + symbol detail
+  with SVG charts/SMA, portfolio, watchlists; same-origin proxy to the API.
+- **Phase 3 — Persistence** 🟡 *scaffolded*
+  PostgreSQL schema + migrations and a feature-gated `finviz-db` repository
+  exist and compile; the SQL-compiler path is ready. **Not yet wired** into the
+  running server (still in-memory) — next: a `Store` trait + DB seed loader.
+- **Phase 4 — Realtime** 🟡 *partial* — `/ws/quotes` streaming + live symbol
+  page done; `/ws/screener-updates` still to do.
+- **Phase 5 — Auth & hardening** ⬜ JWT, rate limiting, request IDs.
+- **Phase 6 — Data adapters** 🟡 *partial* — runtime-configurable providers
+  (Finnhub, Polygon.io, generic HTTP/webhook) with a Settings UI, live-quote
+  fetch with fallback, and write-only API keys. Bars/fundamentals adapters and
+  WebSocket upstreams still to do.
+- **Phase 7 — Ops** 🟡 *partial* — Dockerfiles, docker-compose, and CI
+  (fmt/clippy/test/check/build) done; k8s manifests still to do.
 
 ## 5. Decisions / deviations (flag for review)
 

@@ -6,7 +6,8 @@ use std::sync::{Arc, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use finviz_types::{
-    Bar, Fundamentals, Instrument, Interval, Position, Quote, QuoteTick, ScreenerRow, Watchlist,
+    Bar, Fundamentals, Instrument, Interval, Position, ProviderConfig, Quote, QuoteTick,
+    ScreenerRow, Watchlist,
 };
 
 use crate::seed;
@@ -25,6 +26,8 @@ struct Data {
     watchlists: RwLock<HashMap<String, Watchlist>>,
     positions: RwLock<HashMap<String, Position>>,
     next_id: AtomicU64,
+    // Live market-data provider settings, editable at runtime via the API.
+    provider: RwLock<ProviderConfig>,
 }
 
 impl AppState {
@@ -71,8 +74,25 @@ impl AppState {
                 watchlists: RwLock::new(watchlists),
                 positions: RwLock::new(positions),
                 next_id: AtomicU64::new(1),
+                provider: RwLock::new(ProviderConfig::default()),
             }),
         }
+    }
+
+    /// Current live-data provider settings.
+    pub fn provider_config(&self) -> ProviderConfig {
+        self.inner.provider.read().unwrap().clone()
+    }
+
+    /// Replace the provider settings. An empty incoming `api_key` preserves the
+    /// existing key, so the UI can save other fields without re-entering it.
+    pub fn set_provider_config(&self, mut cfg: ProviderConfig) -> ProviderConfig {
+        let mut guard = self.inner.provider.write().unwrap();
+        if cfg.api_key.as_deref().is_none_or(str::is_empty) {
+            cfg.api_key = guard.api_key.clone();
+        }
+        *guard = cfg.clone();
+        cfg
     }
 
     pub fn instruments(&self) -> &[Instrument] {

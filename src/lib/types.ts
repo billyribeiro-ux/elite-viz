@@ -136,3 +136,27 @@ export interface QuoteTick {
 	change_pct: number;
 	ts: number;
 }
+
+export type ProviderKind = 'mock' | 'finnhub' | 'polygon' | 'generic';
+
+/** Provider settings as returned by the API (api key is write-only). */
+export interface ProviderView {
+	kind: ProviderKind;
+	base_url: string | null;
+	enabled: boolean;
+	api_key_set: boolean;
+	api_key_hint: string | null;
+}
+
+/** Provider settings as submitted from the UI. */
+export interface ProviderConfigInput {
+	kind: ProviderKind;
+	api_key?: string;
+	base_url?: string;
+	enabled: boolean;
+}
+
+export interface ProviderTestResult {
+	ok: boolean;
+	message: string;
+}

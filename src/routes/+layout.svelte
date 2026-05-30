@@ -7,7 +7,8 @@
 	const links = [
 		{ href: '/', label: 'Screener' },
 		{ href: '/portfolio', label: 'Portfolio' },
-		{ href: '/watchlists', label: 'Watchlists' }
+		{ href: '/watchlists', label: 'Watchlists' },
+		{ href: '/settings', label: 'Settings' }
 	];
 
 	function isActive(href: string): boolean {

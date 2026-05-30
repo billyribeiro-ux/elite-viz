@@ -9,6 +9,9 @@ import type {
 	PortfolioSummary,
 	Position,
 	Preset,
+	ProviderConfigInput,
+	ProviderTestResult,
+	ProviderView,
 	Quote,
 	ScreenRequest,
 	ScreenResponse,
@@ -128,4 +131,36 @@ export async function getPortfolioSummary(fetchFn: FetchLike = fetch): Promise<P
 
 export async function getPositions(fetchFn: FetchLike = fetch): Promise<Position[]> {
 	return json<Position[]>(await fetchFn('/api/v1/portfolio/positions'));
+}
+
+// ---- settings (data provider) ---------------------------------------------
+
+export async function getProvider(fetchFn: FetchLike = fetch): Promise<ProviderView> {
+	return json<ProviderView>(await fetchFn('/api/v1/settings/provider'));
+}
+
+export async function saveProvider(
+	cfg: ProviderConfigInput,
+	fetchFn: FetchLike = fetch
+): Promise<ProviderView> {
+	return json<ProviderView>(
+		await fetchFn('/api/v1/settings/provider', {
+			method: 'PUT',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(cfg)
+		})
+	);
+}
+
+export async function testProvider(
+	cfg: ProviderConfigInput,
+	fetchFn: FetchLike = fetch
+): Promise<ProviderTestResult> {
+	return json<ProviderTestResult>(
+		await fetchFn('/api/v1/settings/provider/test', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(cfg)
+		})
+	);
 }

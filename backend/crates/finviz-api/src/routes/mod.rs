@@ -4,6 +4,7 @@ pub mod indicators;
 pub mod market_data;
 pub mod portfolio;
 pub mod screener;
+pub mod settings;
 pub mod watchlists;
 pub mod ws;
 
@@ -47,4 +48,10 @@ pub fn api_router() -> Router<AppState> {
         )
         .route("/portfolio/positions/{symbol}", delete(portfolio::delete))
         .route("/portfolio/summary", get(portfolio::summary))
+        // settings
+        .route(
+            "/settings/provider",
+            get(settings::get).put(settings::update),
+        )
+        .route("/settings/provider/test", post(settings::test))
 }

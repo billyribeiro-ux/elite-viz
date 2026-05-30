@@ -3,10 +3,11 @@
 A stock-screener / market-data visualization platform: a **Rust + Axum**
 backend serving a **SvelteKit (Svelte 5)** dashboard.
 
-> Status: **Phase 1–2 complete** — a working vertical slice (screener engine,
-> REST API, and dashboard) running on a synthetic in-memory dataset. See
-> [`PLAN.md`](./PLAN.md) for the roadmap and [`docs/`](./docs) for the spec
-> overview this was built from.
+> Status: **working end-to-end** — screener engine, full REST API, realtime
+> WebSocket quotes, and a multi-page dashboard (screener, symbol detail with
+> charts, portfolio, watchlists) on a synthetic in-memory dataset, plus a
+> feature-gated Postgres layer, Docker, and CI. See [`PLAN.md`](./PLAN.md) for
+> the roadmap and [`docs/`](./docs) for the spec overview this was built from.
 
 ## What works today
 
@@ -20,6 +21,16 @@ backend serving a **SvelteKit (Svelte 5)** dashboard.
 - **Dashboard** — filter bar with one-click presets, sortable results table,
   trend coloring; server-rendered then interactive. Talks to the backend
   through a same-origin SvelteKit proxy.
+- **Symbol detail** — OHLCV price chart with SMA overlay, key stats, and a
+  **live price** streamed over WebSocket.
+- **Portfolio & watchlists** — valuation with unrealized P&L; watchlist
+  create/delete.
+- **Pluggable data provider** — a Settings screen where you pick a provider
+  (Finnhub, Polygon.io, or a generic HTTP/webhook endpoint), enter your API key
+  or URL, test the connection, and go live. The API key is write-only (masked
+  after saving) and the platform falls back to demo data if a live call fails.
+- **Persistence (scaffolded)** — `finviz-db` crate + SQL migrations behind the
+  `postgres` feature; the server still defaults to the in-memory store.
 
 ## Architecture
 
@@ -75,6 +86,14 @@ pnpm run build
 | GET  | `/api/v1/screener/presets` | Example screens |
 | GET  | `/api/v1/indicators/sma/{symbol}?period=20` | Simple moving average |
 | GET  | `/api/v1/indicators/rsi/{symbol}?period=14` | Relative strength index |
+| GET/POST | `/api/v1/watchlists` | List / create watchlists |
+| GET/PUT/DELETE | `/api/v1/watchlists/{id}` | Read / update / delete |
+| GET/POST | `/api/v1/portfolio/positions` | List / upsert positions |
+| DELETE | `/api/v1/portfolio/positions/{symbol}` | Remove a position |
+| GET  | `/api/v1/portfolio/summary` | Valuation + unrealized P&L |
+| GET/PUT | `/api/v1/settings/provider` | Read / update data-provider config |
+| POST | `/api/v1/settings/provider/test` | Test provider connectivity |
+| WS   | `/ws/quotes?symbols=AAPL,MSFT` | Realtime quote ticks |
 
 Example:
 
@@ -83,3 +102,14 @@ curl -X POST localhost:8080/api/v1/screener/run \
   -H 'content-type: application/json' \
   -d '{"query":"market_cap > 1e12 and sector = \"Technology\"","sort":"market_cap","order":"desc"}'
 ```
+
+## Docker
+
+```bash
+docker compose up --build   # web :3000, api :8080, postgres :5432, redis :6379
+```
+
+The `web` and `backend` services build from their respective Dockerfiles;
+`db`/`redis` back the Postgres path. CI (GitHub Actions) runs rustfmt, clippy
+(`-D warnings`), `cargo test`, the `postgres`-feature check, and
+`pnpm check` + `pnpm build` on every push/PR.

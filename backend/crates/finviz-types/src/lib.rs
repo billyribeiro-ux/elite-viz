@@ -166,3 +166,36 @@ pub struct QuoteTick {
     pub change_pct: f64,
     pub ts: i64,
 }
+
+/// Which upstream market-data provider to use for live quotes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ProviderKind {
+    /// Built-in synthetic dataset (no network). Default.
+    #[default]
+    Mock,
+    /// Finnhub `/quote` endpoint.
+    Finnhub,
+    /// Polygon.io snapshot endpoint.
+    Polygon,
+    /// Any HTTP endpoint returning `{ "price": ... }`-ish JSON for a symbol.
+    Generic,
+}
+
+/// Runtime-editable connection settings for the chosen provider.
+///
+/// Set via `PUT /api/v1/settings/provider`; the API key is write-only and is
+/// never echoed back in full.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct ProviderConfig {
+    pub kind: ProviderKind,
+    #[serde(default)]
+    pub api_key: Option<String>,
+    /// Base URL / webhook endpoint (required for `generic`, optional override
+    /// for the named providers).
+    #[serde(default)]
+    pub base_url: Option<String>,
+    /// When false, the server always serves the built-in dataset.
+    #[serde(default)]
+    pub enabled: bool,
+}

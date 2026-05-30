@@ -5,6 +5,7 @@
 //! adapters arrive in later phases.
 
 mod error;
+mod providers;
 mod routes;
 
 use axum::http::{HeaderValue, Method};
