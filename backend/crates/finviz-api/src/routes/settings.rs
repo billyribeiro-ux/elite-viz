@@ -55,7 +55,11 @@ pub async fn test(
     State(state): State<AppState>,
     Json(mut cfg): Json<ProviderConfig>,
 ) -> Json<TestResult> {
-    if cfg.api_key.as_deref().is_none_or(str::is_empty) {
+    let key_missing = match cfg.api_key.as_deref() {
+        Some(key) => key.is_empty(),
+        None => true,
+    };
+    if key_missing {
         cfg.api_key = state.provider_config().api_key;
     }
     match providers::health(&cfg).await {

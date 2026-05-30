@@ -1,6 +1,5 @@
 //! Authentication primitives: Argon2 password hashing and HS256 JWTs.
 
-use argon2::password_hash::rand_core::OsRng;
 use argon2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
 use argon2::Argon2;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
@@ -32,7 +31,9 @@ pub struct Claims {
 
 /// Hash a plaintext password with Argon2id and a random salt.
 pub fn hash_password(password: &str) -> Result<String, AuthError> {
-    let salt = SaltString::generate(&mut OsRng);
+    let mut salt_bytes = [0u8; 16];
+    getrandom::getrandom(&mut salt_bytes).map_err(|_| AuthError::Hash)?;
+    let salt = SaltString::encode_b64(&salt_bytes).map_err(|_| AuthError::Hash)?;
     Argon2::default()
         .hash_password(password.as_bytes(), &salt)
         .map(|h| h.to_string())

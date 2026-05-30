@@ -6,11 +6,19 @@ use std::sync::{Arc, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use finviz_types::{
-    Bar, Fundamentals, Instrument, Interval, Position, ProviderConfig, Quote, QuoteTick,
-    ScreenerRow, Watchlist,
+    Alert, Bar, Fundamentals, Instrument, Interval, Position, ProviderConfig, Quote, QuoteTick,
+    ScreenerRow, User, Watchlist,
 };
 
 use crate::seed;
+
+/// Internal user record including the password hash (never serialized out).
+#[derive(Clone)]
+struct UserRecord {
+    id: String,
+    email: String,
+    password_hash: String,
+}
 
 /// Cheap-to-clone handle to the shared dataset (`Arc` inside).
 #[derive(Clone)]
@@ -28,6 +36,10 @@ struct Data {
     next_id: AtomicU64,
     // Live market-data provider settings, editable at runtime via the API.
     provider: RwLock<ProviderConfig>,
+    // Auth + alerts.
+    users: RwLock<HashMap<String, UserRecord>>,
+    alerts: RwLock<HashMap<String, Alert>>,
+    jwt_secret: String,
 }
 
 impl AppState {
@@ -105,7 +117,11 @@ impl AppState {
     /// existing key, so the UI can save other fields without re-entering it.
     pub fn set_provider_config(&self, mut cfg: ProviderConfig) -> ProviderConfig {
         let mut guard = self.inner.provider.write().unwrap();
-        if cfg.api_key.as_deref().is_none_or(str::is_empty) {
+        let key_missing = match cfg.api_key.as_deref() {
+            Some(key) => key.is_empty(),
+            None => true,
+        };
+        if key_missing {
             cfg.api_key = guard.api_key.clone();
         }
         *guard = cfg.clone();
