@@ -1,0 +1,85 @@
+//! A small, clearly-synthetic seed dataset so the platform runs with no
+//! database and no upstream market-data credentials. Values are illustrative,
+//! not real market data.
+
+use finviz_types::{Fundamentals, Instrument, Quote};
+
+/// One seed record: reference data + a quote + fundamentals.
+pub struct SeedRow {
+    pub instrument: Instrument,
+    pub quote: Quote,
+    pub fundamentals: Fundamentals,
+}
+
+/// Build the seed dataset. `now` is the quote timestamp (epoch seconds).
+#[allow(clippy::type_complexity)] // a flat tuple table is the clearest form for seed data
+pub fn dataset(now: i64) -> Vec<SeedRow> {
+    // (symbol, name, sector, industry, exchange, price, prev_close, volume,
+    //  market_cap, pe, eps, div_yield, beta)
+    const RAW: &[(
+        &str, &str, &str, &str, &str, f64, f64, i64, f64, f64, f64, f64, f64,
+    )] = &[
+        ("AAPL", "Apple Inc.", "Technology", "Consumer Electronics", "NASDAQ", 212.45, 209.80, 54_300_000, 3.30e12, 33.1, 6.42, 0.45, 1.20),
+        ("MSFT", "Microsoft Corp.", "Technology", "Software—Infrastructure", "NASDAQ", 441.20, 438.10, 18_900_000, 3.28e12, 37.4, 11.80, 0.70, 0.92),
+        ("NVDA", "NVIDIA Corp.", "Technology", "Semiconductors", "NASDAQ", 124.30, 119.55, 240_100_000, 3.05e12, 65.2, 1.91, 0.03, 1.75),
+        ("GOOGL", "Alphabet Inc.", "Communication Services", "Internet Content", "NASDAQ", 178.60, 176.90, 22_400_000, 2.18e12, 27.8, 6.42, 0.00, 1.05),
+        ("AMZN", "Amazon.com Inc.", "Consumer Cyclical", "Internet Retail", "NASDAQ", 186.10, 183.40, 41_200_000, 1.94e12, 51.0, 3.65, 0.00, 1.15),
+        ("META", "Meta Platforms Inc.", "Communication Services", "Internet Content", "NASDAQ", 498.30, 505.20, 14_700_000, 1.26e12, 28.9, 17.24, 0.40, 1.22),
+        ("TSLA", "Tesla Inc.", "Consumer Cyclical", "Auto Manufacturers", "NASDAQ", 182.50, 177.30, 98_600_000, 5.81e11, 44.7, 4.08, 0.00, 2.30),
+        ("BRK.B", "Berkshire Hathaway", "Financial Services", "Insurance—Diversified", "NYSE", 412.80, 410.10, 3_100_000, 8.90e11, 9.8, 42.10, 0.00, 0.86),
+        ("JPM", "JPMorgan Chase & Co.", "Financial Services", "Banks—Diversified", "NYSE", 198.40, 196.70, 9_800_000, 5.70e11, 11.6, 17.10, 2.30, 1.10),
+        ("V", "Visa Inc.", "Financial Services", "Credit Services", "NYSE", 274.10, 272.50, 6_200_000, 5.55e11, 30.2, 9.08, 0.75, 0.95),
+        ("JNJ", "Johnson & Johnson", "Healthcare", "Drug Manufacturers", "NYSE", 146.20, 147.10, 7_400_000, 3.52e11, 22.4, 6.53, 3.30, 0.55),
+        ("WMT", "Walmart Inc.", "Consumer Defensive", "Discount Stores", "NYSE", 67.30, 66.85, 15_300_000, 5.42e11, 28.7, 2.34, 1.25, 0.50),
+        ("PG", "Procter & Gamble", "Consumer Defensive", "Household Products", "NYSE", 165.40, 164.20, 5_900_000, 3.90e11, 26.1, 6.34, 2.40, 0.42),
+        ("XOM", "Exxon Mobil Corp.", "Energy", "Oil & Gas Integrated", "NYSE", 113.70, 115.20, 16_100_000, 4.51e11, 13.5, 8.42, 3.20, 0.90),
+        ("CVX", "Chevron Corp.", "Energy", "Oil & Gas Integrated", "NYSE", 156.30, 158.10, 8_700_000, 2.88e11, 14.2, 11.01, 4.10, 1.02),
+        ("UNH", "UnitedHealth Group", "Healthcare", "Healthcare Plans", "NYSE", 492.10, 488.40, 3_300_000, 4.55e11, 19.8, 24.85, 1.50, 0.65),
+        ("HD", "Home Depot Inc.", "Consumer Cyclical", "Home Improvement", "NYSE", 342.60, 339.90, 3_600_000, 3.40e11, 22.9, 14.96, 2.45, 1.04),
+        ("BAC", "Bank of America", "Financial Services", "Banks—Diversified", "NYSE", 39.80, 39.20, 38_400_000, 3.10e11, 12.3, 3.24, 2.65, 1.30),
+        ("KO", "Coca-Cola Co.", "Consumer Defensive", "Beverages—Non-Alcoholic", "NYSE", 62.10, 61.80, 13_900_000, 2.68e11, 24.6, 2.52, 3.05, 0.58),
+        ("PEP", "PepsiCo Inc.", "Consumer Defensive", "Beverages—Non-Alcoholic", "NASDAQ", 168.40, 169.10, 5_100_000, 2.31e11, 23.1, 7.29, 3.10, 0.52),
+        ("INTC", "Intel Corp.", "Technology", "Semiconductors", "NASDAQ", 30.20, 31.05, 44_700_000, 1.28e11, 0.0, -0.45, 1.65, 1.08),
+        ("AMD", "Advanced Micro Devices", "Technology", "Semiconductors", "NASDAQ", 162.80, 158.40, 51_200_000, 2.63e11, 0.0, 0.62, 0.00, 1.70),
+        ("NFLX", "Netflix Inc.", "Communication Services", "Entertainment", "NASDAQ", 648.20, 640.50, 4_900_000, 2.79e11, 44.2, 14.66, 0.00, 1.28),
+        ("DIS", "Walt Disney Co.", "Communication Services", "Entertainment", "NYSE", 101.30, 102.80, 11_200_000, 1.84e11, 36.4, 2.78, 0.85, 1.40),
+        ("BA", "Boeing Co.", "Industrials", "Aerospace & Defense", "NYSE", 178.50, 181.20, 7_800_000, 1.09e11, 0.0, -3.67, 0.00, 1.55),
+        ("PFE", "Pfizer Inc.", "Healthcare", "Drug Manufacturers", "NYSE", 28.40, 28.10, 33_600_000, 1.61e11, 17.9, 1.59, 5.90, 0.60),
+    ];
+
+    RAW.iter()
+        .map(|&(sym, name, sector, industry, exch, price, prev, vol, cap, pe, eps, dy, beta)| {
+            let change = price - prev;
+            let change_pct = if prev != 0.0 { change / prev * 100.0 } else { 0.0 };
+            SeedRow {
+                instrument: Instrument {
+                    symbol: sym.into(),
+                    name: name.into(),
+                    sector: sector.into(),
+                    industry: industry.into(),
+                    exchange: exch.into(),
+                },
+                quote: Quote {
+                    symbol: sym.into(),
+                    price,
+                    change,
+                    change_pct,
+                    volume: vol,
+                    prev_close: prev,
+                    day_high: price.max(prev) * 1.012,
+                    day_low: price.min(prev) * 0.988,
+                    ts: now,
+                },
+                fundamentals: Fundamentals {
+                    symbol: sym.into(),
+                    market_cap: cap,
+                    pe: (pe > 0.0).then_some(pe),
+                    eps: Some(eps),
+                    dividend_yield: (dy > 0.0).then_some(dy),
+                    beta: Some(beta),
+                    shares_outstanding: if price > 0.0 { cap / price } else { 0.0 },
+                },
+            }
+        })
+        .collect()
+}

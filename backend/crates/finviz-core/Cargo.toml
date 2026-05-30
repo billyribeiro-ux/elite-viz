@@ -1,0 +1,10 @@
+[package]
+name = "finviz-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+finviz-types.workspace = true
+finviz-screener.workspace = true
+serde.workspace = true
