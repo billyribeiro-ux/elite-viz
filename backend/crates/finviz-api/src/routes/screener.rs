@@ -62,7 +62,9 @@ pub async fn run(
     let sort_field = req.sort.as_deref().unwrap_or("market_cap");
     let key = canonical_field(sort_field);
     if key.is_empty() {
-        return Err(AppError::BadRequest(format!("unknown sort field `{sort_field}`")));
+        return Err(AppError::BadRequest(format!(
+            "unknown sort field `{sort_field}`"
+        )));
     }
     matched.sort_by(|a, b| {
         let ord = compare_values(&a.field(key), &b.field(key));

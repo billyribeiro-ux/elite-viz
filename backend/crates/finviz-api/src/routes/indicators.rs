@@ -90,7 +90,11 @@ pub async fn rsi(
     let mut points = Vec::new();
     for i in (period + 1)..closes.len() {
         let diff = closes[i].1 - closes[i - 1].1;
-        let (gain, loss) = if diff >= 0.0 { (diff, 0.0) } else { (0.0, -diff) };
+        let (gain, loss) = if diff >= 0.0 {
+            (diff, 0.0)
+        } else {
+            (0.0, -diff)
+        };
         avg_gain = (avg_gain * (period as f64 - 1.0) + gain) / period as f64;
         avg_loss = (avg_loss * (period as f64 - 1.0) + loss) / period as f64;
         let rsi = if avg_loss == 0.0 {

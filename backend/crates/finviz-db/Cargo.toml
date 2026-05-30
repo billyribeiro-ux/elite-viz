@@ -1,0 +1,22 @@
+[package]
+name = "finviz-db"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+# Pulls in sqlx + Postgres. Off by default so the standard workspace build
+# needs no database and stays light; enable for the persistence path.
+postgres = ["dep:sqlx"]
+
+[dependencies]
+finviz-types.workspace = true
+anyhow.workspace = true
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "tls-rustls",
+    "postgres",
+    "migrate",
+    "macros",
+], optional = true }

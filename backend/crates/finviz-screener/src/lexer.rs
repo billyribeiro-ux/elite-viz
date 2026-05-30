@@ -89,7 +89,9 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, ScreenerError> {
                     tokens.push(Token::Ne);
                     i += 2;
                 } else {
-                    return Err(ScreenerError::Lex(format!("unexpected '!' at position {i}")));
+                    return Err(ScreenerError::Lex(format!(
+                        "unexpected '!' at position {i}"
+                    )));
                 }
             }
             '"' | '\'' => {
@@ -116,7 +118,9 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, ScreenerError> {
                 }
                 tokens.push(Token::Str(s));
             }
-            d if d.is_ascii_digit() || (d == '.' && peek(&chars, i + 1).is_some_and(|n| n.is_ascii_digit())) => {
+            d if d.is_ascii_digit()
+                || (d == '.' && peek(&chars, i + 1).is_some_and(|n| n.is_ascii_digit())) =>
+            {
                 let start = i;
                 while i < chars.len() && is_number_char(chars[i]) {
                     // handle exponent sign: e+6 / e-3
@@ -135,7 +139,9 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, ScreenerError> {
             }
             a if a.is_alphabetic() || a == '_' => {
                 let start = i;
-                while i < chars.len() && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == '.') {
+                while i < chars.len()
+                    && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == '.')
+                {
                     i += 1;
                 }
                 let word: String = chars[start..i].iter().collect();

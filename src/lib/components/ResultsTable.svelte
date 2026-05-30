@@ -51,7 +51,7 @@
 		<tbody>
 			{#each rows as row (row.symbol)}
 				<tr>
-					<td class="sym">{row.symbol}</td>
+					<td class="sym"><a href="/symbol/{row.symbol}">{row.symbol}</a></td>
 					<td class="name">{row.name}</td>
 					<td class="muted">{row.sector}</td>
 					<td class="right">{price(row.price)}</td>
@@ -109,10 +109,14 @@
 	tbody tr:hover {
 		background: var(--panel-2);
 	}
-	.sym {
+	.sym a {
 		font-weight: 700;
 		color: var(--accent);
 		font-family: var(--mono);
+		text-decoration: none;
+	}
+	.sym a:hover {
+		text-decoration: underline;
 	}
 	.name {
 		max-width: 220px;

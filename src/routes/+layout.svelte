@@ -1,7 +1,19 @@
 <script lang="ts">
 	import '../app.css';
+	import { page } from '$app/state';
 
 	let { children } = $props();
+
+	const links = [
+		{ href: '/', label: 'Screener' },
+		{ href: '/portfolio', label: 'Portfolio' },
+		{ href: '/watchlists', label: 'Watchlists' },
+		{ href: '/settings', label: 'Settings' }
+	];
+
+	function isActive(href: string): boolean {
+		return href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
+	}
 </script>
 
 <div class="shell">
@@ -14,7 +26,9 @@
 			</div>
 		</div>
 		<nav>
-			<a href="/" class="active">Screener</a>
+			{#each links as link (link.href)}
+				<a href={link.href} class:active={isActive(link.href)}>{link.label}</a>
+			{/each}
 		</nav>
 	</header>
 

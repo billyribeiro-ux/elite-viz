@@ -1,0 +1,10 @@
+.git
+node_modules
+.svelte-kit
+build
+backend/target
+**/target
+.env
+.env.*
+!.env.example
+*.log

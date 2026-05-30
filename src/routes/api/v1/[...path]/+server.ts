@@ -9,7 +9,7 @@ import type { RequestHandler } from './$types';
 const BACKEND = env.BACKEND_URL ?? 'http://localhost:8080';
 
 async function forward(
-	method: 'GET' | 'POST',
+	method: string,
 	path: string,
 	search: string,
 	body: string | undefined
@@ -20,9 +20,9 @@ async function forward(
 		res = await fetch(target, {
 			method,
 			headers: { 'content-type': 'application/json' },
-			body
+			body: body && body.length > 0 ? body : undefined
 		});
-	} catch (err) {
+	} catch {
 		return new Response(
 			JSON.stringify({ error: 'bad_gateway', message: `backend unreachable at ${BACKEND}` }),
 			{ status: 502, headers: { 'content-type': 'application/json' } }
@@ -34,8 +34,13 @@ async function forward(
 	});
 }
 
+const withBody: RequestHandler = ({ params, url, request }) =>
+	request.text().then((body) => forward(request.method, params.path, url.search, body));
+
 export const GET: RequestHandler = ({ params, url }) =>
 	forward('GET', params.path, url.search, undefined);
-
-export const POST: RequestHandler = async ({ params, url, request }) =>
-	forward('POST', params.path, url.search, await request.text());
+export const POST = withBody;
+export const PUT = withBody;
+export const PATCH = withBody;
+export const DELETE: RequestHandler = ({ params, url }) =>
+	forward('DELETE', params.path, url.search, undefined);
