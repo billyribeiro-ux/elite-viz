@@ -116,3 +116,53 @@ pub struct ScreenerRow {
     pub dividend_yield: Option<f64>,
     pub beta: Option<f64>,
 }
+
+/// A named collection of symbols a user is tracking.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Watchlist {
+    pub id: String,
+    pub name: String,
+    pub symbols: Vec<Symbol>,
+}
+
+/// A single open position in a portfolio.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Position {
+    pub symbol: Symbol,
+    pub quantity: f64,
+    /// Average cost basis per share.
+    pub avg_price: f64,
+}
+
+/// A position enriched with current market value and unrealized P&L.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PositionValue {
+    pub symbol: Symbol,
+    pub quantity: f64,
+    pub avg_price: f64,
+    pub last_price: f64,
+    pub market_value: f64,
+    pub cost_basis: f64,
+    pub unrealized_pnl: f64,
+    pub unrealized_pnl_pct: f64,
+}
+
+/// Aggregate portfolio valuation.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PortfolioSummary {
+    pub positions: Vec<PositionValue>,
+    pub market_value: f64,
+    pub cost_basis: f64,
+    pub unrealized_pnl: f64,
+    pub unrealized_pnl_pct: f64,
+}
+
+/// A streamed quote update (sent over the `/ws/quotes` WebSocket).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct QuoteTick {
+    pub symbol: Symbol,
+    pub price: f64,
+    pub change: f64,
+    pub change_pct: f64,
+    pub ts: i64,
+}
