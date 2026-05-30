@@ -54,6 +54,10 @@
 	<span><strong>{matched}</strong> matches</span>
 	<span class="sep">/</span>
 	<span>{total} symbols</span>
+	<label class="live" class:on={live}>
+		<input type="checkbox" bind:checked={live} />
+		<span class="led"></span> Live
+	</label>
 	{#if query.trim()}
 		<code>{query}</code>
 	{/if}
@@ -89,6 +93,33 @@
 		border-radius: 6px;
 		padding: 0.15rem 0.5rem;
 		margin-left: auto;
+	}
+	.live {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.82rem;
+		cursor: pointer;
+		user-select: none;
+	}
+	.live .led {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--border);
+	}
+	.live.on .led {
+		background: var(--accent-2);
+		box-shadow: 0 0 6px var(--accent-2);
+		animation: blink 1.2s infinite;
+	}
+	.live.on {
+		color: var(--accent-2);
+	}
+	@keyframes blink {
+		50% {
+			opacity: 0.4;
+		}
 	}
 	.error {
 		background: rgba(248, 114, 114, 0.12);
