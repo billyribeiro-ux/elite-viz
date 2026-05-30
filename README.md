@@ -91,9 +91,15 @@ pnpm run build
 | GET/POST | `/api/v1/portfolio/positions` | List / upsert positions |
 | DELETE | `/api/v1/portfolio/positions/{symbol}` | Remove a position |
 | GET  | `/api/v1/portfolio/summary` | Valuation + unrealized P&L |
+| GET/POST | `/api/v1/alerts` | List / create price alerts |
+| DELETE | `/api/v1/alerts/{id}` | Delete an alert |
+| GET  | `/api/v1/alerts/check` | Evaluate alerts against live data |
+| POST | `/api/v1/auth/register` · `/login` | Get a JWT |
+| GET  | `/api/v1/auth/me` · POST `/refresh` | Current user / refresh token |
 | GET/PUT | `/api/v1/settings/provider` | Read / update data-provider config |
 | POST | `/api/v1/settings/provider/test` | Test provider connectivity |
 | WS   | `/ws/quotes?symbols=AAPL,MSFT` | Realtime quote ticks |
+| WS   | `/ws/screener-updates?query=...` | Live screener results |
 
 Example:
 

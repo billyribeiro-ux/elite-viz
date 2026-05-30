@@ -1,6 +1,8 @@
 <script lang="ts">
 	import '../app.css';
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { auth, initAuth, logout } from '$lib/auth.svelte';
 
 	let { children } = $props();
 
@@ -8,12 +10,15 @@
 		{ href: '/', label: 'Screener' },
 		{ href: '/portfolio', label: 'Portfolio' },
 		{ href: '/watchlists', label: 'Watchlists' },
+		{ href: '/alerts', label: 'Alerts' },
 		{ href: '/settings', label: 'Settings' }
 	];
 
 	function isActive(href: string): boolean {
 		return href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
 	}
+
+	onMount(initAuth);
 </script>
 
 <div class="shell">
@@ -29,6 +34,12 @@
 			{#each links as link (link.href)}
 				<a href={link.href} class:active={isActive(link.href)}>{link.label}</a>
 			{/each}
+			{#if auth.user}
+				<span class="user" title={auth.user.email}>{auth.user.email}</span>
+				<button class="auth-btn" onclick={logout}>Sign out</button>
+			{:else}
+				<a href="/login" class:active={isActive('/login')}>Sign in</a>
+			{/if}
 		</nav>
 	</header>
 
@@ -89,6 +100,27 @@
 	nav a.active {
 		color: var(--text);
 		background: var(--panel-2);
+	}
+	nav .user {
+		color: var(--muted);
+		font-size: 0.8rem;
+		max-width: 160px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	nav .auth-btn {
+		background: transparent;
+		border: 1px solid var(--border);
+		color: var(--muted);
+		border-radius: var(--radius);
+		padding: 0.35rem 0.7rem;
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+	nav .auth-btn:hover {
+		color: var(--text);
+		border-color: var(--accent);
 	}
 	footer {
 		margin-top: 2.5rem;

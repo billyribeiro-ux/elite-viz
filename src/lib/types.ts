@@ -160,3 +160,24 @@ export interface ProviderTestResult {
 	ok: boolean;
 	message: string;
 }
+
+export interface User {
+	id: string;
+	email: string;
+}
+
+export interface AuthResponse {
+	token: string;
+	user: User;
+}
+
+export interface Alert {
+	id: string;
+	symbol: string;
+	query: string;
+	note: string;
+}
+
+export interface AlertStatus extends Alert {
+	triggered: boolean;
+}
