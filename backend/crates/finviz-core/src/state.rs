@@ -75,8 +75,25 @@ impl AppState {
                 positions: RwLock::new(positions),
                 next_id: AtomicU64::new(1),
                 provider: RwLock::new(ProviderConfig::default()),
+                users: RwLock::new(HashMap::new()),
+                alerts: RwLock::new(HashMap::new()),
+                jwt_secret: std::env::var("JWT_SECRET")
+                    .unwrap_or_else(|_| "dev-secret-change-me".to_string()),
             }),
         }
+    }
+
+    /// Secret used to sign/verify JWTs.
+    pub fn jwt_secret(&self) -> &[u8] {
+        self.inner.jwt_secret.as_bytes()
+    }
+
+    /// Build a single merged screener row for one symbol.
+    pub fn screener_row(&self, symbol: &str) -> Option<ScreenerRow> {
+        let symbol = symbol.to_ascii_uppercase();
+        self.screener_rows()
+            .into_iter()
+            .find(|r| r.symbol == symbol)
     }
 
     /// Current live-data provider settings.
@@ -93,6 +110,91 @@ impl AppState {
         }
         *guard = cfg.clone();
         cfg
+    }
+
+    // ---- Users / auth ------------------------------------------------------
+
+    /// Create a user. Returns `None` if the email is already registered.
+    pub fn create_user(&self, email: &str, password_hash: String) -> Option<User> {
+        let email = email.trim().to_ascii_lowercase();
+        let mut guard = self.inner.users.write().unwrap();
+        if guard.contains_key(&email) {
+            return None;
+        }
+        let id = format!(
+            "user-{}",
+            self.inner.next_id.fetch_add(1, Ordering::Relaxed)
+        );
+        guard.insert(
+            email.clone(),
+            UserRecord {
+                id: id.clone(),
+                email: email.clone(),
+                password_hash,
+            },
+        );
+        Some(User { id, email })
+    }
+
+    /// Look up a user and their stored password hash by email.
+    pub fn user_credentials(&self, email: &str) -> Option<(User, String)> {
+        let email = email.trim().to_ascii_lowercase();
+        self.inner.users.read().unwrap().get(&email).map(|r| {
+            (
+                User {
+                    id: r.id.clone(),
+                    email: r.email.clone(),
+                },
+                r.password_hash.clone(),
+            )
+        })
+    }
+
+    pub fn user_by_id(&self, id: &str) -> Option<User> {
+        self.inner
+            .users
+            .read()
+            .unwrap()
+            .values()
+            .find(|r| r.id == id)
+            .map(|r| User {
+                id: r.id.clone(),
+                email: r.email.clone(),
+            })
+    }
+
+    // ---- Alerts ------------------------------------------------------------
+
+    pub fn alerts(&self) -> Vec<Alert> {
+        let mut v: Vec<Alert> = self
+            .inner
+            .alerts
+            .read()
+            .unwrap()
+            .values()
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.symbol.cmp(&b.symbol));
+        v
+    }
+
+    pub fn create_alert(&self, symbol: String, query: String, note: String) -> Alert {
+        let id = format!(
+            "alert-{}",
+            self.inner.next_id.fetch_add(1, Ordering::Relaxed)
+        );
+        let alert = Alert {
+            id: id.clone(),
+            symbol: symbol.to_ascii_uppercase(),
+            query,
+            note,
+        };
+        self.inner.alerts.write().unwrap().insert(id, alert.clone());
+        alert
+    }
+
+    pub fn delete_alert(&self, id: &str) -> bool {
+        self.inner.alerts.write().unwrap().remove(id).is_some()
     }
 
     pub fn instruments(&self) -> &[Instrument] {

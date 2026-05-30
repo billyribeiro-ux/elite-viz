@@ -9,6 +9,9 @@ use serde::Serialize;
 pub enum AppError {
     NotFound(String),
     BadRequest(String),
+    Unauthorized(String),
+    Conflict(String),
+    Internal(String),
 }
 
 pub type ApiResult<T> = Result<T, AppError>;
@@ -24,6 +27,9 @@ impl IntoResponse for AppError {
         let (status, error, message) = match self {
             AppError::NotFound(m) => (StatusCode::NOT_FOUND, "not_found", m),
             AppError::BadRequest(m) => (StatusCode::BAD_REQUEST, "bad_request", m),
+            AppError::Unauthorized(m) => (StatusCode::UNAUTHORIZED, "unauthorized", m),
+            AppError::Conflict(m) => (StatusCode::CONFLICT, "conflict", m),
+            AppError::Internal(m) => (StatusCode::INTERNAL_SERVER_ERROR, "internal", m),
         };
         (status, Json(ErrorBody { error, message })).into_response()
     }

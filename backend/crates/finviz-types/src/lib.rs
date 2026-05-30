@@ -199,3 +199,21 @@ pub struct ProviderConfig {
     #[serde(default)]
     pub enabled: bool,
 }
+
+/// A public-facing user record (never includes the password hash).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct User {
+    pub id: String,
+    pub email: String,
+}
+
+/// A price/metric alert: a screener expression evaluated against one symbol.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Alert {
+    pub id: String,
+    pub symbol: Symbol,
+    /// A screener filter expression, e.g. `price > 250`.
+    pub query: String,
+    #[serde(default)]
+    pub note: String,
+}
