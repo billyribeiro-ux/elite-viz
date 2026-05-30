@@ -1,6 +1,10 @@
 /** Thin client for the same-origin `/api/v1` proxy. */
+import { authHeaders } from './token';
 import type {
+	Alert,
+	AlertStatus,
 	ApiError,
+	AuthResponse,
 	Bar,
 	FieldInfo,
 	Fundamentals,
@@ -15,6 +19,7 @@ import type {
 	Quote,
 	ScreenRequest,
 	ScreenResponse,
+	User,
 	Watchlist
 } from './types';
 
@@ -163,4 +168,64 @@ export async function testProvider(
 			body: JSON.stringify(cfg)
 		})
 	);
+}
+
+// ---- auth -----------------------------------------------------------------
+
+export async function register(
+	creds: { email: string; password: string },
+	fetchFn: FetchLike = fetch
+): Promise<AuthResponse> {
+	return json<AuthResponse>(
+		await fetchFn('/api/v1/auth/register', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(creds)
+		})
+	);
+}
+
+export async function login(
+	creds: { email: string; password: string },
+	fetchFn: FetchLike = fetch
+): Promise<AuthResponse> {
+	return json<AuthResponse>(
+		await fetchFn('/api/v1/auth/login', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(creds)
+		})
+	);
+}
+
+export async function getMe(fetchFn: FetchLike = fetch): Promise<User> {
+	return json<User>(await fetchFn('/api/v1/auth/me', { headers: authHeaders() }));
+}
+
+// ---- alerts ---------------------------------------------------------------
+
+export async function getAlerts(fetchFn: FetchLike = fetch): Promise<Alert[]> {
+	return json<Alert[]>(await fetchFn('/api/v1/alerts'));
+}
+
+export async function checkAlerts(fetchFn: FetchLike = fetch): Promise<AlertStatus[]> {
+	return json<AlertStatus[]>(await fetchFn('/api/v1/alerts/check'));
+}
+
+export async function createAlert(
+	body: { symbol: string; query: string; note?: string },
+	fetchFn: FetchLike = fetch
+): Promise<Alert> {
+	return json<Alert>(
+		await fetchFn('/api/v1/alerts', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body)
+		})
+	);
+}
+
+export async function deleteAlert(id: string, fetchFn: FetchLike = fetch): Promise<void> {
+	const res = await fetchFn(`/api/v1/alerts/${encodeURIComponent(id)}`, { method: 'DELETE' });
+	if (!res.ok) throw new Error(`failed to delete alert (${res.status})`);
 }

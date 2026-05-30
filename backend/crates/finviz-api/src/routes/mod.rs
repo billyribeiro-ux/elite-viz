@@ -1,5 +1,7 @@
 //! API v1 router assembly.
 
+pub mod alerts;
+pub mod auth;
 pub mod indicators;
 pub mod market_data;
 pub mod portfolio;
@@ -48,10 +50,19 @@ pub fn api_router() -> Router<AppState> {
         )
         .route("/portfolio/positions/{symbol}", delete(portfolio::delete))
         .route("/portfolio/summary", get(portfolio::summary))
+        // alerts
+        .route("/alerts", get(alerts::list).post(alerts::create))
+        .route("/alerts/{id}", delete(alerts::delete))
+        .route("/alerts/check", get(alerts::check))
         // settings
         .route(
             "/settings/provider",
             get(settings::get).put(settings::update),
         )
         .route("/settings/provider/test", post(settings::test))
+        // auth
+        .route("/auth/register", post(auth::register))
+        .route("/auth/login", post(auth::login))
+        .route("/auth/me", get(auth::me))
+        .route("/auth/refresh", post(auth::refresh))
 }

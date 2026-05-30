@@ -78,9 +78,11 @@ for the Postgres path. Fully unit-tested.
   PostgreSQL schema + migrations and a feature-gated `finviz-db` repository
   exist and compile; the SQL-compiler path is ready. **Not yet wired** into the
   running server (still in-memory) — next: a `Store` trait + DB seed loader.
-- **Phase 4 — Realtime** 🟡 *partial* — `/ws/quotes` streaming + live symbol
-  page done; `/ws/screener-updates` still to do.
-- **Phase 5 — Auth & hardening** ⬜ JWT, rate limiting, request IDs.
+- **Phase 4 — Realtime** ✅ *done* — `/ws/quotes` (live symbol page) and
+  `/ws/screener-updates` (live screener results) both streaming.
+- **Phase 5 — Auth & hardening** 🟡 *partial* — JWT register/login/me/refresh
+  with Argon2 hashing and a bearer extractor; price alerts on the screener DSL.
+  Rate limiting and per-user data scoping still to do.
 - **Phase 6 — Data adapters** 🟡 *partial* — runtime-configurable providers
   (Finnhub, Polygon.io, generic HTTP/webhook) with a Settings UI, live-quote
   fetch with fallback, and write-only API keys. Bars/fundamentals adapters and

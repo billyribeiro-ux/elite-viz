@@ -12,14 +12,17 @@ async function forward(
 	method: string,
 	path: string,
 	search: string,
-	body: string | undefined
+	body: string | undefined,
+	auth: string | null
 ): Promise<Response> {
 	const target = `${BACKEND}/api/v1/${path}${search}`;
+	const headers: Record<string, string> = { 'content-type': 'application/json' };
+	if (auth) headers.authorization = auth;
 	let res: Response;
 	try {
 		res = await fetch(target, {
 			method,
-			headers: { 'content-type': 'application/json' },
+			headers,
 			body: body && body.length > 0 ? body : undefined
 		});
 	} catch {
@@ -35,12 +38,16 @@ async function forward(
 }
 
 const withBody: RequestHandler = ({ params, url, request }) =>
-	request.text().then((body) => forward(request.method, params.path, url.search, body));
+	request
+		.text()
+		.then((body) =>
+			forward(request.method, params.path, url.search, body, request.headers.get('authorization'))
+		);
 
-export const GET: RequestHandler = ({ params, url }) =>
-	forward('GET', params.path, url.search, undefined);
+export const GET: RequestHandler = ({ params, url, request }) =>
+	forward('GET', params.path, url.search, undefined, request.headers.get('authorization'));
 export const POST = withBody;
 export const PUT = withBody;
 export const PATCH = withBody;
-export const DELETE: RequestHandler = ({ params, url }) =>
-	forward('DELETE', params.path, url.search, undefined);
+export const DELETE: RequestHandler = ({ params, url, request }) =>
+	forward('DELETE', params.path, url.search, undefined, request.headers.get('authorization'));

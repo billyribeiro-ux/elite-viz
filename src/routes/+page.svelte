@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { env } from '$env/dynamic/public';
 	import { runScreen } from '$lib/api';
 	import QueryBar from '$lib/components/QueryBar.svelte';
 	import ResultsTable from '$lib/components/ResultsTable.svelte';
@@ -16,6 +17,7 @@
 	let matched = $state(untrack(() => data.initial.matched));
 	let loading = $state(false);
 	let error = $state<string | null>(null);
+	let live = $state(false);
 
 	async function run() {
 		loading = true;
@@ -42,6 +44,30 @@
 		}
 		run();
 	}
+
+	// When live, stream sorted-by-change results from the backend. Re-subscribes
+	// whenever the query changes; tears down on toggle-off or unmount.
+	$effect(() => {
+		if (!live) return;
+		const q = query;
+		const wsBase =
+			env.PUBLIC_WS_URL?.replace('/ws/quotes', '/ws/screener-updates') ||
+			`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname}:8080/ws/screener-updates`;
+		const socket = new WebSocket(`${wsBase}?query=${encodeURIComponent(q)}&limit=100`);
+		socket.onmessage = (event) => {
+			const msg = JSON.parse(event.data);
+			if (msg.error) {
+				error = msg.error;
+				return;
+			}
+			rows = msg.rows;
+			total = msg.total;
+			matched = msg.matched;
+			sort = 'change_pct';
+			order = 'desc';
+		};
+		return () => socket.close();
+	});
 </script>
 
 <svelte:head>
@@ -54,6 +80,10 @@
 	<span><strong>{matched}</strong> matches</span>
 	<span class="sep">/</span>
 	<span>{total} symbols</span>
+	<label class="live" class:on={live}>
+		<input type="checkbox" bind:checked={live} />
+		<span class="led"></span> Live
+	</label>
 	{#if query.trim()}
 		<code>{query}</code>
 	{/if}
@@ -89,6 +119,33 @@
 		border-radius: 6px;
 		padding: 0.15rem 0.5rem;
 		margin-left: auto;
+	}
+	.live {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.82rem;
+		cursor: pointer;
+		user-select: none;
+	}
+	.live .led {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--border);
+	}
+	.live.on .led {
+		background: var(--accent-2);
+		box-shadow: 0 0 6px var(--accent-2);
+		animation: blink 1.2s infinite;
+	}
+	.live.on {
+		color: var(--accent-2);
+	}
+	@keyframes blink {
+		50% {
+			opacity: 0.4;
+		}
 	}
 	.error {
 		background: rgba(248, 114, 114, 0.12);

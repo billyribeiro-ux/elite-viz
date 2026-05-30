@@ -4,6 +4,7 @@
 //! CORS, request tracing, and graceful shutdown. Persistence and live data
 //! adapters arrive in later phases.
 
+mod auth;
 mod error;
 mod providers;
 mod routes;
@@ -45,6 +46,7 @@ fn build_app(config: &Config, state: AppState) -> Router {
     Router::new()
         .route("/healthz", get(healthz))
         .route("/ws/quotes", get(routes::ws::quotes))
+        .route("/ws/screener-updates", get(routes::ws::screener_updates))
         .nest("/api/v1", routes::api_router())
         .layer(cors_layer(config))
         .layer(TraceLayer::new_for_http())

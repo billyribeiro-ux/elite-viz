@@ -8,6 +8,8 @@ pub struct Config {
     pub bind_addr: SocketAddr,
     /// Allowed CORS origin (`CORS_ORIGIN`, default `http://localhost:5173`).
     pub cors_origin: String,
+    /// Secret used to sign JWTs (`JWT_SECRET`).
+    pub jwt_secret: String,
 }
 
 impl Config {
@@ -20,9 +22,13 @@ impl Config {
         let cors_origin =
             std::env::var("CORS_ORIGIN").unwrap_or_else(|_| "http://localhost:5173".to_string());
 
+        let jwt_secret =
+            std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-change-me".to_string());
+
         Self {
             bind_addr,
             cors_origin,
+            jwt_secret,
         }
     }
 }
