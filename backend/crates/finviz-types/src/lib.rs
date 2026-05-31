@@ -98,23 +98,98 @@ pub struct Bar {
 }
 
 /// A fully merged screener row: everything the engine and UI need about one
-/// symbol in a single flat record.
+/// symbol in a single flat record. The full FINVIZ-style metric surface the
+/// screener DSL can filter on (fundamentals, technicals, descriptive fields).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ScreenerRow {
+    // ---- Identity / descriptive ----
     pub symbol: Symbol,
     pub name: String,
     pub sector: String,
     pub industry: String,
     pub exchange: String,
+    /// Country of domicile, e.g. `USA`.
+    pub country: String,
+    /// Mean analyst 12-month price target (absolute price), if covered.
+    pub target_price: Option<f64>,
+    /// 3-month average daily share volume.
+    pub avg_volume: f64,
+    /// Today's volume relative to `avg_volume` (1.0 == average).
+    pub rel_volume: f64,
+    /// Free-floating shares available to trade.
+    pub float_shares: f64,
+    /// Mean analyst recommendation, 1 (strong buy) .. 5 (strong sell).
+    pub recom: Option<f64>,
+
+    // ---- Market / quote ----
     pub price: f64,
     pub change: f64,
     pub change_pct: f64,
     pub volume: i64,
+
+    // ---- Valuation ----
     pub market_cap: f64,
     pub pe: Option<f64>,
+    pub forward_pe: Option<f64>,
+    pub peg: Option<f64>,
+    /// Price/Sales.
+    pub ps: Option<f64>,
+    /// Price/Book.
+    pub pb: Option<f64>,
+    /// Price/Free-cash-flow.
+    pub price_to_fcf: Option<f64>,
     pub eps: Option<f64>,
     pub dividend_yield: Option<f64>,
     pub beta: Option<f64>,
+
+    // ---- Profitability (percentages) ----
+    pub roa: Option<f64>,
+    pub roe: Option<f64>,
+    pub roic: Option<f64>,
+    pub gross_margin: Option<f64>,
+    pub oper_margin: Option<f64>,
+    pub profit_margin: Option<f64>,
+    pub payout_ratio: Option<f64>,
+
+    // ---- Financial health ----
+    pub current_ratio: Option<f64>,
+    pub quick_ratio: Option<f64>,
+    pub debt_equity: Option<f64>,
+    pub lt_debt_equity: Option<f64>,
+
+    // ---- Ownership (percentages) ----
+    pub insider_own: Option<f64>,
+    pub inst_own: Option<f64>,
+    pub short_float: Option<f64>,
+    pub short_ratio: Option<f64>,
+
+    // ---- Performance (percentages) ----
+    pub perf_week: f64,
+    pub perf_month: f64,
+    pub perf_quarter: f64,
+    pub perf_half: f64,
+    pub perf_year: f64,
+    pub perf_ytd: f64,
+
+    // ---- Technical ----
+    /// Weekly volatility, percent.
+    pub volatility_w: f64,
+    /// Monthly volatility, percent.
+    pub volatility_m: f64,
+    /// 14-period Relative Strength Index, 0..100.
+    pub rsi14: f64,
+    /// Average True Range (absolute price units).
+    pub atr: f64,
+    /// Percent distance of price above/below its 20-day SMA.
+    pub sma20_rel: f64,
+    /// Percent distance of price above/below its 50-day SMA.
+    pub sma50_rel: f64,
+    /// Percent distance of price above/below its 200-day SMA.
+    pub sma200_rel: f64,
+    /// Percent from the 52-week high (<= 0).
+    pub high_52w_pct: f64,
+    /// Percent from the 52-week low (>= 0).
+    pub low_52w_pct: f64,
 }
 
 /// A named collection of symbols a user is tracking.

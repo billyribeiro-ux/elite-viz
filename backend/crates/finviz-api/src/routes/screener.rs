@@ -143,5 +143,35 @@ pub async fn presets() -> Json<Vec<Preset>> {
             label: "Large-cap gainers",
             query: "market_cap > 5e11 and change_pct > 0",
         },
+        Preset {
+            id: "oversold",
+            label: "Oversold (RSI < 30)",
+            query: "rsi14 < 30",
+        },
+        Preset {
+            id: "overbought",
+            label: "Overbought (RSI > 70)",
+            query: "rsi14 > 70",
+        },
+        Preset {
+            id: "quality",
+            label: "Quality (high ROE, low debt)",
+            query: "roe > 20 and debt_equity < 0.5",
+        },
+        Preset {
+            id: "top-week-gainers",
+            label: "Top week gainers",
+            query: "perf_week > 5",
+        },
+        Preset {
+            id: "high-short-interest",
+            label: "High short interest",
+            query: "short_float > 15",
+        },
+        Preset {
+            id: "below-200d-sma",
+            label: "Below 200-day SMA",
+            query: "sma200_rel < 0",
+        },
     ])
 }

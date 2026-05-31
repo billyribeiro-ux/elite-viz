@@ -105,6 +105,7 @@ impl Db {
         Ok(rows
             .iter()
             .map(|r| ScreenerRow {
+                // Columns present in the current Postgres schema.
                 symbol: r.get("symbol"),
                 name: r.get("name"),
                 sector: r.get("sector"),
@@ -119,6 +120,50 @@ impl Db {
                 eps: r.get("eps"),
                 dividend_yield: r.get("dividend_yield"),
                 beta: r.get("beta"),
+                // Extended FINVIZ-style metrics are not yet materialized in the
+                // Postgres schema (added to the in-memory seed first); default
+                // to "unavailable" until a schema migration backfills them.
+                country: String::new(),
+                target_price: None,
+                avg_volume: 0.0,
+                rel_volume: 0.0,
+                float_shares: 0.0,
+                recom: None,
+                forward_pe: None,
+                peg: None,
+                ps: None,
+                pb: None,
+                price_to_fcf: None,
+                roa: None,
+                roe: None,
+                roic: None,
+                gross_margin: None,
+                oper_margin: None,
+                profit_margin: None,
+                payout_ratio: None,
+                current_ratio: None,
+                quick_ratio: None,
+                debt_equity: None,
+                lt_debt_equity: None,
+                insider_own: None,
+                inst_own: None,
+                short_float: None,
+                short_ratio: None,
+                perf_week: 0.0,
+                perf_month: 0.0,
+                perf_quarter: 0.0,
+                perf_half: 0.0,
+                perf_year: 0.0,
+                perf_ytd: 0.0,
+                volatility_w: 0.0,
+                volatility_m: 0.0,
+                rsi14: 0.0,
+                atr: 0.0,
+                sma20_rel: 0.0,
+                sma50_rel: 0.0,
+                sma200_rel: 0.0,
+                high_52w_pct: 0.0,
+                low_52w_pct: 0.0,
             })
             .collect())
     }
