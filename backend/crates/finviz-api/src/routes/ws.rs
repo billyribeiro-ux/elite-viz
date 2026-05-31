@@ -98,7 +98,7 @@ async fn stream_screener(mut socket: WebSocket, state: AppState, q: ScreenerWsQu
             _ = interval.tick() => {
                 // Apply live jitter so each update reflects price movement.
                 let mut rows = state.screener_rows();
-                for row in rows.iter_mut() {
+                for row in &mut rows {
                     if let Some(t) = state.tick(&row.symbol) {
                         row.price = t.price;
                         row.change = t.change;

@@ -18,7 +18,9 @@
 		return href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
 	}
 
-	onMount(initAuth);
+	onMount(() => {
+		initAuth();
+	});
 </script>
 
 <div class="shell">

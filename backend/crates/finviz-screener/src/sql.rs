@@ -1,7 +1,7 @@
 //! Compiles a parsed [`Expr`] into a parameterized SQL `WHERE` clause.
 //!
-//! Used by the PostgreSQL path (Phase 3). Field names are mapped to column
-//! names via [`canonical_field`], and unknown fields are rejected so we never
+//! Used by the PostgreSQL-backed path. Field names are mapped to column names
+//! via [`canonical_field`], and unknown fields are rejected so we never
 //! interpolate raw user input into SQL.
 
 use crate::ast::{CmpOp, Expr, Literal};
@@ -109,5 +109,43 @@ mod tests {
             compile(&expr),
             Err(ScreenerError::UnknownField("bogus".into()))
         );
+    }
+
+    #[test]
+    fn like_compiles_to_parameterized_ilike() {
+        // The user-supplied substring must be bound as a parameter (never
+        // interpolated) so wildcards/quotes cannot break out of the literal.
+        let expr = parse("name ~ \"a%b'c\"").unwrap();
+        let out = compile(&expr).unwrap();
+        assert_eq!(out.clause, "name ILIKE '%' || $1 || '%'");
+        assert_eq!(out.params, vec![SqlParam::Str("a%b'c".into())]);
+    }
+
+    #[test]
+    fn placeholders_are_numbered_in_left_to_right_order() {
+        // Aliases canonicalize to real columns, and every literal becomes a
+        // positional placeholder in encounter order across nested OR/NOT.
+        let expr = parse("not (mktcap > 1e12 or pe < 15) and ticker = \"AAPL\"").unwrap();
+        let out = compile(&expr).unwrap();
+        assert_eq!(
+            out.clause,
+            "((NOT (market_cap > $1 OR pe < $2)) AND lower(symbol) = lower($3))"
+        );
+        assert_eq!(
+            out.params,
+            vec![
+                SqlParam::F64(1e12),
+                SqlParam::F64(15.0),
+                SqlParam::Str("AAPL".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn not_equal_string_uses_case_insensitive_compare() {
+        let expr = parse("sector <> \"Energy\"").unwrap();
+        let out = compile(&expr).unwrap();
+        assert_eq!(out.clause, "lower(sector) <> lower($1)");
+        assert_eq!(out.params, vec![SqlParam::Str("Energy".into())]);
     }
 }

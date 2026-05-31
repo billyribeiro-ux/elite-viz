@@ -55,10 +55,10 @@ impl Row for ScreenerRow {
             "change_pct" => Value::Num(self.change_pct),
             "volume" => Value::Num(self.volume as f64),
             "market_cap" => Value::Num(self.market_cap),
-            "pe" => self.pe.map(Value::Num).unwrap_or(Value::Null),
-            "eps" => self.eps.map(Value::Num).unwrap_or(Value::Null),
-            "dividend_yield" => self.dividend_yield.map(Value::Num).unwrap_or(Value::Null),
-            "beta" => self.beta.map(Value::Num).unwrap_or(Value::Null),
+            "pe" => self.pe.map_or(Value::Null, Value::Num),
+            "eps" => self.eps.map_or(Value::Null, Value::Num),
+            "dividend_yield" => self.dividend_yield.map_or(Value::Null, Value::Num),
+            "beta" => self.beta.map_or(Value::Null, Value::Num),
             _ => Value::Null,
         }
     }

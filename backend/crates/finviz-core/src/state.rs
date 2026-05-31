@@ -1,4 +1,11 @@
 //! Shared application state: an in-memory market dataset.
+//!
+//! The mutable collections sit behind [`RwLock`]s and the accessors below use
+//! `.read().unwrap()` / `.write().unwrap()`. A `PoisonError` can only arise if a
+//! thread panics *while holding* one of these locks; every critical section
+//! here is a short, panic-free map/clone/sort over owned data, so propagating
+//! the panic (a poisoned lock means state is already suspect) is the correct,
+//! standard-library-idiomatic behavior rather than silently masking corruption.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -117,10 +124,7 @@ impl AppState {
     /// existing key, so the UI can save other fields without re-entering it.
     pub fn set_provider_config(&self, mut cfg: ProviderConfig) -> ProviderConfig {
         let mut guard = self.inner.provider.write().unwrap();
-        let key_missing = match cfg.api_key.as_deref() {
-            Some(key) => key.is_empty(),
-            None => true,
-        };
+        let key_missing = cfg.api_key.as_deref().is_none_or(str::is_empty);
         if key_missing {
             cfg.api_key = guard.api_key.clone();
         }

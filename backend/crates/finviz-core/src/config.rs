@@ -9,6 +9,11 @@ pub struct Config {
     /// Allowed CORS origin (`CORS_ORIGIN`, default `http://localhost:5173`).
     pub cors_origin: String,
     /// Secret used to sign JWTs (`JWT_SECRET`).
+    ///
+    /// Note: [`crate::AppState::seeded`] reads `JWT_SECRET` from the environment
+    /// directly (with the same default), so the server's signing key tracks the
+    /// environment regardless of this field. It is exposed here for callers that
+    /// want the resolved value without re-reading the environment.
     pub jwt_secret: String,
 }
 
