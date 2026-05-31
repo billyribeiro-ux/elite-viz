@@ -3,7 +3,7 @@
 	import { env } from '$env/dynamic/public';
 	import Chart from '$lib/components/Chart.svelte';
 	import { compactNumber, marketCap, optional, percent, price, trend } from '$lib/format';
-	import type { QuoteTick } from '$lib/types';
+	import type { IndicatorPoint, QuoteTick } from '$lib/types';
 
 	let { data } = $props();
 
@@ -14,6 +14,48 @@
 	const liveChange = $derived(live?.change ?? data.quote.change);
 
 	const closes = $derived(data.bars.map((b) => ({ ts: b.ts, value: b.close })));
+
+	// Indicator overlay selection. Only offer what the backend actually returned.
+	type Overlay = 'none' | 'sma' | 'ema' | 'bbands';
+	const hasSma = $derived((data.sma?.points?.length ?? 0) > 0);
+	const hasEma = $derived((data.ema?.points?.length ?? 0) > 0);
+	const hasBbands = $derived((data.bbands?.length ?? 0) > 0);
+	const hasRsi = $derived((data.rsi?.points?.length ?? 0) > 0);
+
+	let overlay = $state<Overlay>('sma');
+
+	const overlayOptions = $derived(
+		[
+			{ value: 'none' as Overlay, label: 'None', show: true },
+			{ value: 'sma' as Overlay, label: `SMA(${data.sma?.period ?? 20})`, show: hasSma },
+			{ value: 'ema' as Overlay, label: `EMA(${data.ema?.period ?? 20})`, show: hasEma },
+			{ value: 'bbands' as Overlay, label: 'Bollinger', show: hasBbands }
+		].filter((o) => o.show)
+	);
+
+	// The line overlaid on the price chart (single-line overlays).
+	const overlayPoints = $derived<IndicatorPoint[]>(
+		overlay === 'sma'
+			? (data.sma?.points ?? [])
+			: overlay === 'ema'
+				? (data.ema?.points ?? [])
+				: []
+	);
+	const overlayLabel = $derived(
+		overlay === 'sma'
+			? `SMA(${data.sma?.period ?? 20})`
+			: overlay === 'ema'
+				? `EMA(${data.ema?.period ?? 20})`
+				: ''
+	);
+
+	// Bollinger bands rendered as three series sharing the price chart's domain.
+	const bbMiddle = $derived<IndicatorPoint[]>(
+		(data.bbands ?? []).map((p) => ({ ts: p.ts, value: p.middle }))
+	);
+
+	const rsiPoints = $derived<IndicatorPoint[]>(data.rsi?.points ?? []);
+	const latestRsi = $derived(rsiPoints.length ? rsiPoints[rsiPoints.length - 1].value : null);
 
 	const stats = $derived([
 		{ label: 'Market Cap', value: marketCap(data.fundamentals.market_cap) },
@@ -62,7 +104,54 @@
 	</div>
 </header>
 
-<Chart series={closes} overlay={data.sma.points} label="Close" overlayLabel={`SMA(${data.sma.period})`} />
+{#if overlayOptions.length > 1}
+	<div class="indicators" role="group" aria-label="Chart overlays">
+		{#each overlayOptions as opt (opt.value)}
+			<button
+				type="button"
+				class:active={overlay === opt.value}
+				onclick={() => (overlay = opt.value)}
+			>
+				{opt.label}
+			</button>
+		{/each}
+	</div>
+{/if}
+
+<Chart
+	series={closes}
+	overlay={overlayPoints}
+	overlayLabel={overlay === 'bbands' ? '' : overlayLabel}
+	bands={overlay === 'bbands' && hasBbands
+		? {
+				upper: data.bbands.map((p) => ({ ts: p.ts, value: p.upper })),
+				lower: data.bbands.map((p) => ({ ts: p.ts, value: p.lower }))
+			}
+		: null}
+	label="Close"
+/>
+
+{#if overlay === 'bbands' && bbMiddle.length}
+	<p class="caption">Bollinger middle = SMA basis; envelope shaded.</p>
+{/if}
+
+{#if hasRsi}
+	<section class="rsi">
+		<div class="rsi-head">
+			<span class="rsi-title">RSI(14)</span>
+			{#if latestRsi !== null}
+				<span
+					class="rsi-val"
+					class:over={latestRsi >= 70}
+					class:under={latestRsi <= 30}
+				>
+					{latestRsi.toFixed(1)}
+				</span>
+			{/if}
+		</div>
+		<Chart series={rsiPoints} height={90} label="RSI" />
+	</section>
+{/if}
 
 <div class="stats">
 	{#each stats as stat (stat.label)}
@@ -131,6 +220,61 @@
 	}
 	.price.down {
 		color: var(--danger);
+	}
+	.indicators {
+		display: flex;
+		gap: 0.4rem;
+		margin-bottom: 0.6rem;
+		flex-wrap: wrap;
+	}
+	.indicators button {
+		background: var(--panel);
+		border: 1px solid var(--border);
+		color: var(--muted);
+		border-radius: var(--radius);
+		padding: 0.3rem 0.7rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.indicators button:hover {
+		color: var(--text);
+		border-color: var(--accent);
+	}
+	.indicators button.active {
+		color: var(--text);
+		background: var(--panel-2);
+		border-color: var(--accent);
+	}
+	.caption {
+		margin: 0.4rem 0 0;
+		color: var(--muted);
+		font-size: 0.75rem;
+	}
+	.rsi {
+		margin-top: 1rem;
+	}
+	.rsi-head {
+		display: flex;
+		align-items: baseline;
+		gap: 0.6rem;
+		margin-bottom: 0.35rem;
+	}
+	.rsi-title {
+		font-size: 0.8rem;
+		color: var(--muted);
+		font-weight: 600;
+	}
+	.rsi-val {
+		font-size: 0.85rem;
+		font-variant-numeric: tabular-nums;
+		color: var(--text);
+	}
+	.rsi-val.over {
+		color: var(--danger);
+	}
+	.rsi-val.under {
+		color: var(--accent-2);
 	}
 	.stats {
 		display: grid;

@@ -73,7 +73,7 @@ set, and register them as screener fields.
   Technical) + more preset signals.
 **Owner: orchestrator (solo, shared files).**
 
-### Wave 2 — Groups + Maps/Heatmap  (parallel, additive)
+### Wave 2 — Groups + Maps/Heatmap  ✅ DONE
 - **R-Groups**: `routes/groups.rs` → aggregate `screener_rows` by
   sector/industry/country/cap (count, avg change, avg P/E, total mkt cap, perf).
   Frontend `/groups` page (sortable group table + bar viz).
@@ -81,7 +81,7 @@ set, and register them as screener fields.
   colored by perf window) consuming existing screener rows; selectable window.
 **Owners: 2 disjoint agents; orchestrator wires mod.rs/nav/api.**
 
-### Wave 3 — Charts upgrade + more indicators  (parallel, additive)
+### Wave 3 — Charts upgrade + more indicators  ✅ DONE
 - **R-Indicators**: add EMA, MACD, Bollinger Bands, Stochastics, ATR endpoints
   (extend `indicators.rs` — single owner).
 - **S-Charts**: candlestick `Chart` mode + indicator overlays + timeframe

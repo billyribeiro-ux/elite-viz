@@ -5,6 +5,7 @@ export interface ScreenerRow {
 	name: string;
 	sector: string;
 	industry: string;
+	country: string;
 	exchange: string;
 	price: number;
 	change: number;
@@ -15,7 +16,41 @@ export interface ScreenerRow {
 	eps: number | null;
 	dividend_yield: number | null;
 	beta: number | null;
+	// Performance windows (percent).
+	perf_week: number;
+	perf_month: number;
+	perf_quarter: number;
+	perf_half: number;
+	perf_year: number;
+	perf_ytd: number;
+	// Technicals.
+	rsi14: number | null;
+	// Expanded fundamentals (Option fields may be null).
+	forward_pe: number | null;
+	peg: number | null;
+	ps: number | null;
+	pb: number | null;
+	roe: number | null;
+	roa: number | null;
+	debt_equity: number | null;
+	profit_margin: number | null;
+	short_float: number | null;
+	inst_own: number | null;
 }
+
+/** Aggregated row from `/api/v1/groups`. */
+export interface GroupRow {
+	name: string;
+	count: number;
+	avg_change_pct: number;
+	avg_pe: number;
+	total_market_cap: number;
+	avg_perf_week: number;
+	avg_perf_month: number;
+	avg_perf_year: number;
+}
+
+export type GroupBy = 'sector' | 'industry' | 'country';
 
 export interface ScreenResponse {
 	query: string;
@@ -99,6 +134,20 @@ export interface IndicatorSeries {
 	indicator: string;
 	period: number;
 	points: IndicatorPoint[];
+}
+
+export interface MacdPoint {
+	ts: number;
+	macd: number;
+	signal: number;
+	hist: number;
+}
+
+export interface BBandPoint {
+	ts: number;
+	middle: number;
+	upper: number;
+	lower: number;
 }
 
 export interface Watchlist {
