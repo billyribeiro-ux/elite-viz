@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { browser } from '$app/environment';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
 	import {
 		deleteSavedScreen,
@@ -15,9 +18,11 @@
 	let { data } = $props();
 
 	// Seed local, user-mutable state once from the server-loaded snapshot.
+	// sort/order come from the load (which resolves them from the URL query
+	// string for deep links), falling back to the defaults baked into +page.ts.
 	let query = $state(untrack(() => data.initial.query));
-	let sort = $state('market_cap');
-	let order = $state<SortOrder>('desc');
+	let sort = $state(untrack(() => data.sort));
+	let order = $state<SortOrder>(untrack(() => data.order));
 	let rows = $state<ScreenerRow[]>(untrack(() => data.initial.rows));
 	let total = $state(untrack(() => data.initial.total));
 	let matched = $state(untrack(() => data.initial.matched));
@@ -34,6 +39,28 @@
 	// Id of the saved screen currently loaded, to badge its match count.
 	let activeSavedId = $state<string | null>(null);
 
+	// Transient "Copied!" confirmation for the share button.
+	let copied = $state(false);
+	let copyTimer: ReturnType<typeof setTimeout> | undefined;
+
+	// Build the canonical query string for the current screen state.
+	function screenParams(): string {
+		const params = new URLSearchParams();
+		if (query.trim()) params.set('q', query);
+		params.set('sort', sort);
+		params.set('order', order);
+		return params.toString();
+	}
+
+	// Reflect the current screen to the URL so it is shareable. Called as a
+	// side-effect of explicit run actions only (never from the live $effect),
+	// which avoids a reactive loop: goto re-runs load, but load only reseeds
+	// $state on a fresh mount, so the already-rendered client state is untouched.
+	function syncUrl() {
+		if (!browser) return;
+		goto(`/?${screenParams()}`, { replaceState: true, keepFocus: true, noScroll: true });
+	}
+
 	async function run() {
 		loading = true;
 		error = null;
@@ -43,10 +70,23 @@
 			total = res.total;
 			matched = res.matched;
 			query = res.query;
+			syncUrl();
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function copyLink() {
+		if (!browser) return;
+		try {
+			await navigator.clipboard.writeText(`${page.url.origin}/?${screenParams()}`);
+			copied = true;
+			clearTimeout(copyTimer);
+			copyTimer = setTimeout(() => (copied = false), 1500);
+		} catch (e) {
+			error = e instanceof Error ? e.message : String(e);
 		}
 	}
 
@@ -152,6 +192,9 @@
 		};
 		return () => socket.close();
 	});
+
+	// Clear the pending "Copied!" reset timer on unmount.
+	$effect(() => () => clearTimeout(copyTimer));
 </script>
 
 <svelte:head>
@@ -226,6 +269,15 @@
 				＋ Save current
 			</button>
 		{/if}
+		<button
+			type="button"
+			class="copy-link"
+			class:copied
+			onclick={copyLink}
+			title="Copy a shareable link to this screen"
+		>
+			{copied ? '✓ Copied!' : '🔗 Copy link'}
+		</button>
 		<button type="button" class="export" onclick={doExport} disabled={exporting}>
 			{exporting ? 'Exporting…' : '⭳ Export CSV'}
 		</button>
@@ -399,7 +451,8 @@
 		font-size: 0.82rem;
 	}
 	.save-current,
-	.save-cancel {
+	.save-cancel,
+	.copy-link {
 		background: transparent;
 		border: 1px solid var(--border);
 		color: var(--muted);
@@ -409,9 +462,14 @@
 		cursor: pointer;
 	}
 	.save-current:hover,
-	.save-cancel:hover {
+	.save-cancel:hover,
+	.copy-link:hover {
 		color: var(--text);
 		border-color: var(--accent);
+	}
+	.copy-link.copied {
+		color: var(--accent-2);
+		border-color: var(--accent-2);
 	}
 	.save-go,
 	.export {

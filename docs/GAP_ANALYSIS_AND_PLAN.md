@@ -37,7 +37,7 @@ dropped — every gap is captured as a tracked wave below.
 | Real-time/premarket/AH | yes | jittered WS + pluggable providers | 🟡 |
 | Auth (JWT) | account | ✅ | ✅ |
 | Export API / tokens | yes | provider settings | 🟡 |
-| Ad-free / layouts / deep links | yes | n/a / partial | 🟡 |
+| Ad-free / layouts / deep links | yes | shareable screener deep-links | 🟡 |
 
 ---
 
@@ -117,7 +117,7 @@ set, and register them as screener fields.
 - Detect channels/wedges/triangles/H&S/double-top from bar series; annotate
   charts; add as screener signals.
 
-### Wave 10 — Persistence cutover + polish
+### Wave 10 — Persistence cutover + polish  ✅ DONE
 - Wire `finviz-db` Postgres store behind a `Store` trait (currently in-memory);
   seed loader; deep-link URL state for screens/maps; layout prefs.
 
@@ -128,3 +128,9 @@ Waves 1–3 are scheduled for immediate execution this session (foundation +
 first parallel waves), each verified and committed independently. Waves 4–10 are
 fully specified here so they are tracked and nothing is lost; they proceed in
 subsequent sessions on the same green-gated, race-safe cadence.
+
+
+---
+
+## Completion status (2026-05-31)
+All 10 waves implemented, each verified (cargo build/fmt/clippy -D warnings default+postgres / test, svelte-check 0/0, pnpm build, dual-server runtime smoke) and committed green. Backend workspace: 74 default tests + 3 postgres-feature tests. The in-memory seeded store remains the zero-dependency default; the Postgres path is feature-gated and full-surface. Remaining FINVIZ parity items are depth refinements (intraday/real candlestick charts, ETF treemap polish, insider/theme MAPS, true 8y financials, live-provider bars/news) — tracked but lower-value than the breadth now in place.
