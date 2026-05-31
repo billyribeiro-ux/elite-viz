@@ -5,6 +5,8 @@ import type {
 	AlertStatus,
 	ApiError,
 	AuthResponse,
+	BacktestRequest,
+	BacktestResult,
 	Bar,
 	BBandPoint,
 	FieldInfo,
@@ -21,6 +23,7 @@ import type {
 	ProviderTestResult,
 	ProviderView,
 	Quote,
+	RuleSpec,
 	ScreenRequest,
 	ScreenResponse,
 	User,
@@ -276,4 +279,27 @@ export async function createAlert(
 export async function deleteAlert(id: string, fetchFn: FetchLike = fetch): Promise<void> {
 	const res = await fetchFn(`/api/v1/alerts/${encodeURIComponent(id)}`, { method: 'DELETE' });
 	if (!res.ok) throw new Error(`failed to delete alert (${res.status})`);
+}
+
+// ---- backtesting ----------------------------------------------------------
+
+/** Catalog of available entry-rule kinds and their params. */
+export async function getBacktestRules(fetchFn: FetchLike = fetch): Promise<RuleSpec[]> {
+	const body = await json<RuleSpec[] | { rules?: RuleSpec[] }>(
+		await fetchFn('/api/v1/backtest/rules')
+	);
+	return Array.isArray(body) ? body : (body.rules ?? []);
+}
+
+export async function runBacktest(
+	req: BacktestRequest,
+	fetchFn: FetchLike = fetch
+): Promise<BacktestResult> {
+	return json<BacktestResult>(
+		await fetchFn('/api/v1/backtest', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(req)
+		})
+	);
 }

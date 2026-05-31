@@ -4,6 +4,7 @@ members = [
     "crates/finviz-types",
     "crates/finviz-screener",
     "crates/finviz-core",
+    "crates/finviz-backtest",
     "crates/finviz-db",
     "crates/finviz-auth",
     "crates/finviz-api",
@@ -32,6 +33,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 finviz-types = { path = "crates/finviz-types" }
 finviz-screener = { path = "crates/finviz-screener" }
 finviz-core = { path = "crates/finviz-core" }
+finviz-backtest = { path = "crates/finviz-backtest" }
 finviz-auth = { path = "crates/finviz-auth" }
 
 [profile.release]

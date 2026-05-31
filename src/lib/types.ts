@@ -230,3 +230,65 @@ export interface Alert {
 export interface AlertStatus extends Alert {
 	triggered: boolean;
 }
+
+// ---- backtesting ----------------------------------------------------------
+
+export type RuleParamType = 'int' | 'float' | 'bool';
+
+/** A single configurable parameter for a rule kind, from the rules catalog. */
+export interface RuleParam {
+	name: string;
+	type: RuleParamType;
+	default?: number | boolean;
+	label?: string;
+}
+
+/** A rule kind in the catalog returned by `/api/v1/backtest/rules`. */
+export interface RuleSpec {
+	kind: string;
+	label?: string;
+	params?: RuleParam[];
+}
+
+/** Entry rule: a kind plus arbitrary param values. */
+export interface StrategyEntry {
+	kind: string;
+	[param: string]: number | boolean | string;
+}
+
+export interface BacktestStrategy {
+	entry: StrategyEntry;
+	time_exit?: number;
+	stop_loss_pct?: number;
+}
+
+export interface BacktestRequest {
+	symbol: string;
+	strategy: BacktestStrategy;
+	limit?: number;
+}
+
+export interface BacktestTrade {
+	entry_ts: number;
+	entry_price: number;
+	exit_ts: number;
+	exit_price: number;
+	return_pct: number;
+	bars_held: number;
+}
+
+export interface EquityPoint {
+	ts: number;
+	equity: number;
+}
+
+export interface BacktestResult {
+	trades: BacktestTrade[];
+	total_return_pct: number;
+	avg_return_pct: number;
+	win_rate: number;
+	max_drawdown_pct: number;
+	sharpe: number;
+	calmar: number;
+	equity_curve: EquityPoint[];
+}

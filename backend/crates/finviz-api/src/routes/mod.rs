@@ -2,6 +2,7 @@
 
 pub mod alerts;
 pub mod auth;
+pub mod backtest;
 pub mod groups;
 pub mod indicators;
 pub mod market_data;
@@ -37,6 +38,9 @@ pub fn api_router() -> Router<AppState> {
         .route("/indicators/macd/{symbol}", get(indicators::macd))
         .route("/indicators/bbands/{symbol}", get(indicators::bbands))
         .route("/indicators/atr/{symbol}", get(indicators::atr))
+        // backtest
+        .route("/backtest", post(backtest::run))
+        .route("/backtest/rules", get(backtest::rules))
         // groups
         .route("/groups", get(groups::list))
         // watchlists

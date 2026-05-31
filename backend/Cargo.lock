@@ -398,6 +398,7 @@ dependencies = [
  "anyhow",
  "axum",
  "finviz-auth",
+ "finviz-backtest",
  "finviz-core",
  "finviz-screener",
  "finviz-types",
@@ -420,6 +421,14 @@ dependencies = [
  "jsonwebtoken",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "finviz-backtest"
+version = "0.1.0"
+dependencies = [
+ "finviz-types",
+ "serde",
 ]
 
 [[package]]

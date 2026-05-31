@@ -13,6 +13,7 @@
 		{ href: '/portfolio', label: 'Portfolio' },
 		{ href: '/watchlists', label: 'Watchlists' },
 		{ href: '/alerts', label: 'Alerts' },
+		{ href: '/backtest', label: 'Backtest' },
 		{ href: '/settings', label: 'Settings' }
 	];
 

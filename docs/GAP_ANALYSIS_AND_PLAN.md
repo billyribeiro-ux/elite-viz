@@ -88,7 +88,7 @@ set, and register them as screener fields.
   selector on the symbol page.
 **Owners: 2 disjoint agents.**
 
-### Wave 4 — Backtesting engine  [headline feature]
+### Wave 4 — Backtesting engine  ✅ DONE  [headline feature]
 - `finviz-backtest` crate (or `backtest.rs`): run an indicator/screener rule over
   bar history; TIME-EXIT + STOP-LOSS; metrics: avg return, win rate, max
   drawdown, Sharpe, Calmar, equity curve, trade list. Pure + unit-tested.
