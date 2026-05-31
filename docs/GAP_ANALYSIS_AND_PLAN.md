@@ -27,10 +27,10 @@ dropped — every gap is captured as a tracked wave below.
 | Portfolios | 100×500, P&L, alerts | 1 in-memory, P&L ✅ | 🟡 |
 | Watchlists | many | CRUD ✅ | ✅ |
 | Alerts | price/news/ratings/insider/SEC/screener-match | symbol+expression + check | 🟡 |
-| News | aggregated + per-ticker | ❌ | ❌ |
+| News | aggregated + per-ticker | market + per-ticker feed | ✅ |
 | Quote detail | quote+chart+insider+ratings+news+financials | quote+chart+stats | 🟡 |
-| Insider trading | tables + map | ❌ | ❌ |
-| Analyst ratings | tables | ❌ | ❌ |
+| Insider trading | tables + map | per-symbol table | 🟡 |
+| Analyst ratings | tables | per-symbol table | ✅ |
 | Options chain | view + export | ❌ | ❌ |
 | ETF analysis | holdings + treemap | ❌ | ❌ |
 | Futures/Forex/Crypto | prices + heatmaps | ❌ | ❌ |
@@ -95,7 +95,7 @@ set, and register them as screener fields.
 - `routes/backtest.rs` + frontend `/backtest` page (rule builder, equity curve,
   metrics cards, trades table).
 
-### Wave 5 — News + Quote-detail enrichment
+### Wave 5 — News + Quote-detail enrichment  ✅ DONE
 - Synthetic news generator in core; `routes/news.rs` (market + per-ticker).
 - Insider-trading + analyst-ratings synthetic tables; expose on quote detail.
 - Frontend `/news` page + enrich `/symbol/[ticker]` (news, insider, ratings,

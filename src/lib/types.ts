@@ -292,3 +292,38 @@ export interface BacktestResult {
 	calmar: number;
 	equity_curve: EquityPoint[];
 }
+
+// ---- news + quote-detail enrichment ---------------------------------------
+
+/** A single news headline from `/api/v1/news`. */
+export interface NewsItem {
+	id: string;
+	ts: number;
+	symbol: string | null;
+	headline: string;
+	source: string;
+	url: string;
+	category: string;
+}
+
+/** An insider transaction from `/api/v1/market-data/insider/{symbol}`. */
+export interface InsiderTrade {
+	symbol: string;
+	insider_name: string;
+	relation: string;
+	transaction: 'Buy' | 'Sell';
+	shares: number;
+	price: number;
+	value: number;
+	ts: number;
+}
+
+/** An analyst rating from `/api/v1/market-data/ratings/{symbol}`. */
+export interface AnalystRating {
+	symbol: string;
+	firm: string;
+	action: string;
+	rating: string;
+	price_target: number | null;
+	ts: number;
+}

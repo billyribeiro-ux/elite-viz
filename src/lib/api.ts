@@ -3,6 +3,7 @@ import { authHeaders } from './token';
 import type {
 	Alert,
 	AlertStatus,
+	AnalystRating,
 	ApiError,
 	AuthResponse,
 	BacktestRequest,
@@ -14,8 +15,10 @@ import type {
 	GroupBy,
 	GroupRow,
 	IndicatorSeries,
+	InsiderTrade,
 	Instrument,
 	MacdPoint,
+	NewsItem,
 	PortfolioSummary,
 	Position,
 	Preset,
@@ -153,6 +156,47 @@ export async function getMacd(
 	);
 	const body = await json<{ points?: MacdPoint[] } | MacdPoint[]>(res);
 	return Array.isArray(body) ? body : (body.points ?? []);
+}
+
+// ---- news + quote-detail enrichment ---------------------------------------
+
+/**
+ * Latest news. With no `symbol`, returns the merged market feed; otherwise the
+ * symbol-specific feed. Tolerates either a bare array or a `{ items }` wrapper.
+ */
+export async function getNews(
+	symbol?: string,
+	limit?: number,
+	fetchFn: FetchLike = fetch
+): Promise<NewsItem[]> {
+	const params = new URLSearchParams();
+	if (symbol) params.set('symbol', symbol);
+	if (limit) params.set('limit', String(limit));
+	const qs = params.toString();
+	const body = await json<{ items?: NewsItem[] } | NewsItem[]>(
+		await fetchFn(`/api/v1/news${qs ? `?${qs}` : ''}`)
+	);
+	return Array.isArray(body) ? body : (body.items ?? []);
+}
+
+export async function getInsiderTrades(
+	symbol: string,
+	fetchFn: FetchLike = fetch
+): Promise<InsiderTrade[]> {
+	const body = await json<{ items?: InsiderTrade[] } | InsiderTrade[]>(
+		await fetchFn(`/api/v1/market-data/insider/${encodeURIComponent(symbol)}`)
+	);
+	return Array.isArray(body) ? body : (body.items ?? []);
+}
+
+export async function getAnalystRatings(
+	symbol: string,
+	fetchFn: FetchLike = fetch
+): Promise<AnalystRating[]> {
+	const body = await json<{ items?: AnalystRating[] } | AnalystRating[]>(
+		await fetchFn(`/api/v1/market-data/ratings/${encodeURIComponent(symbol)}`)
+	);
+	return Array.isArray(body) ? body : (body.items ?? []);
 }
 
 // ---- watchlists -----------------------------------------------------------

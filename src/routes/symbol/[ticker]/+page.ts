@@ -1,14 +1,23 @@
 import type { PageLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import {
+	getAnalystRatings,
 	getBBands,
 	getBars,
 	getFundamentals,
 	getIndicator,
+	getInsiderTrades,
 	getInstruments,
+	getNews,
 	getQuote
 } from '$lib/api';
-import type { BBandPoint, IndicatorSeries } from '$lib/types';
+import type {
+	AnalystRating,
+	BBandPoint,
+	IndicatorSeries,
+	InsiderTrade,
+	NewsItem
+} from '$lib/types';
 
 const LIMIT = 120;
 
@@ -32,15 +41,31 @@ export const load: PageLoad = async ({ params, fetch }) => {
 	const instrument = instruments.find((i) => i.symbol === symbol) ?? null;
 
 	// Extended indicators are best-effort enhancements; null on failure.
-	const [ema, rsi, bbands] = await Promise.all([
+	const [ema, rsi, bbands, news, insider, ratings] = await Promise.all([
 		getIndicator('ema', symbol, { period: 20, limit: LIMIT }, fetch).catch(
 			() => null as IndicatorSeries | null
 		),
 		getIndicator('rsi', symbol, { period: 14, limit: LIMIT }, fetch).catch(
 			() => null as IndicatorSeries | null
 		),
-		getBBands(symbol, { period: 20, limit: LIMIT }, fetch).catch(() => [] as BBandPoint[])
+		getBBands(symbol, { period: 20, limit: LIMIT }, fetch).catch(() => [] as BBandPoint[]),
+		getNews(symbol, 10, fetch).catch(() => [] as NewsItem[]),
+		getInsiderTrades(symbol, fetch).catch(() => [] as InsiderTrade[]),
+		getAnalystRatings(symbol, fetch).catch(() => [] as AnalystRating[])
 	]);
 
-	return { symbol, quote, fundamentals, bars, sma, ema, rsi, bbands, instrument };
+	return {
+		symbol,
+		quote,
+		fundamentals,
+		bars,
+		sma,
+		ema,
+		rsi,
+		bbands,
+		instrument,
+		news,
+		insider,
+		ratings
+	};
 };

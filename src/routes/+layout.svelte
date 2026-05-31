@@ -10,6 +10,7 @@
 		{ href: '/', label: 'Screener' },
 		{ href: '/groups', label: 'Groups' },
 		{ href: '/map', label: 'Map' },
+		{ href: '/news', label: 'News' },
 		{ href: '/portfolio', label: 'Portfolio' },
 		{ href: '/watchlists', label: 'Watchlists' },
 		{ href: '/alerts', label: 'Alerts' },

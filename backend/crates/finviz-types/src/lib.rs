@@ -282,6 +282,54 @@ pub struct User {
     pub email: String,
 }
 
+/// A single synthetic news headline.
+///
+/// `category` is one of `"markets"`, `"earnings"`, `"analyst"`, `"insider"`,
+/// or `"general"`. `symbol` is `None` for broad-market items.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NewsItem {
+    pub id: String,
+    /// Publication timestamp, Unix epoch seconds.
+    pub ts: i64,
+    pub symbol: Option<Symbol>,
+    pub headline: String,
+    pub source: String,
+    pub url: String,
+    pub category: String,
+}
+
+/// A synthetic insider transaction (Form 4 style).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct InsiderTrade {
+    pub symbol: Symbol,
+    pub insider_name: String,
+    /// Relationship to the issuer, e.g. `CEO`, `CFO`, `Director`, `10% Owner`.
+    pub relation: String,
+    /// `"Buy"` or `"Sell"`.
+    pub transaction: String,
+    pub shares: i64,
+    pub price: f64,
+    /// `shares as f64 * price`, in dollars.
+    pub value: f64,
+    /// Transaction timestamp, Unix epoch seconds.
+    pub ts: i64,
+}
+
+/// A synthetic analyst rating action.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AnalystRating {
+    pub symbol: Symbol,
+    /// Issuing research firm, e.g. `Morgan Stanley`.
+    pub firm: String,
+    /// `"Upgrade"`, `"Downgrade"`, `"Initiated"`, or `"Reiterated"`.
+    pub action: String,
+    /// Resulting rating, e.g. `Buy`, `Hold`, `Sell`, `Overweight`.
+    pub rating: String,
+    pub price_target: Option<f64>,
+    /// Rating timestamp, Unix epoch seconds.
+    pub ts: i64,
+}
+
 /// A price/metric alert: a screener expression evaluated against one symbol.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Alert {

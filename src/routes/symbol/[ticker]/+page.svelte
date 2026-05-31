@@ -2,7 +2,15 @@
 	import { onMount } from 'svelte';
 	import { env } from '$env/dynamic/public';
 	import Chart from '$lib/components/Chart.svelte';
-	import { compactNumber, marketCap, optional, percent, price, trend } from '$lib/format';
+	import {
+		compactNumber,
+		marketCap,
+		optional,
+		percent,
+		price,
+		shortDate,
+		trend
+	} from '$lib/format';
 	import type { IndicatorPoint, QuoteTick } from '$lib/types';
 
 	let { data } = $props();
@@ -68,6 +76,30 @@
 		{ label: 'Day Low', value: price(data.quote.day_low) },
 		{ label: 'Prev Close', value: price(data.quote.prev_close) }
 	]);
+
+	// Enrichment tabs — only surface a tab when it has data.
+	type Tab = 'news' | 'insider' | 'ratings';
+	const news = $derived(data.news ?? []);
+	const insider = $derived(data.insider ?? []);
+	const ratings = $derived(data.ratings ?? []);
+	const hasNews = $derived(news.length > 0);
+	const hasInsider = $derived(insider.length > 0);
+	const hasRatings = $derived(ratings.length > 0);
+
+	const tabs = $derived(
+		[
+			{ value: 'news' as Tab, label: 'News', show: hasNews },
+			{ value: 'insider' as Tab, label: 'Insider', show: hasInsider },
+			{ value: 'ratings' as Tab, label: 'Ratings', show: hasRatings }
+		].filter((t) => t.show)
+	);
+
+	let selectedTab = $state<Tab>('news');
+
+	// Keep the selection valid as availability changes.
+	const activeTab = $derived(
+		tabs.some((t) => t.value === selectedTab) ? selectedTab : (tabs[0]?.value ?? null)
+	);
 
 	onMount(() => {
 		const fallback = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname}:8080/ws/quotes`;
@@ -161,6 +193,98 @@
 		</div>
 	{/each}
 </div>
+
+{#if tabs.length > 0}
+	<section class="enrich">
+		<div class="tabs" role="tablist" aria-label="Symbol detail">
+			{#each tabs as tab (tab.value)}
+				<button
+					type="button"
+					role="tab"
+					aria-selected={activeTab === tab.value}
+					class:active={activeTab === tab.value}
+					onclick={() => (selectedTab = tab.value)}
+				>
+					{tab.label}
+				</button>
+			{/each}
+		</div>
+
+		{#if activeTab === 'news'}
+			<ul class="news-list">
+				{#each news as item (item.id)}
+					<li>
+						<time class="cell-date">{shortDate(item.ts)}</time>
+						<div class="news-body">
+							{#if item.url}
+								<a href={item.url} target="_blank" rel="noopener noreferrer">{item.headline}</a>
+							{:else}
+								<span>{item.headline}</span>
+							{/if}
+							{#if item.source}<span class="news-source">{item.source}</span>{/if}
+						</div>
+					</li>
+				{/each}
+			</ul>
+		{:else if activeTab === 'insider'}
+			<div class="table-wrap">
+				<table>
+					<thead>
+						<tr>
+							<th>Date</th>
+							<th>Insider</th>
+							<th>Relation</th>
+							<th>Type</th>
+							<th class="num">Shares</th>
+							<th class="num">Price</th>
+							<th class="num">Value</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each insider as t, i (t.ts + '-' + i)}
+							<tr>
+								<td>{shortDate(t.ts)}</td>
+								<td>{t.insider_name ?? '—'}</td>
+								<td>{t.relation ?? '—'}</td>
+								<td class:buy={t.transaction === 'Buy'} class:sell={t.transaction === 'Sell'}>
+									{t.transaction ?? '—'}
+								</td>
+								<td class="num">{t.shares != null ? compactNumber(t.shares) : '—'}</td>
+								<td class="num">{t.price != null ? price(t.price) : '—'}</td>
+								<td class="num">{t.value != null ? `$${compactNumber(t.value)}` : '—'}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		{:else if activeTab === 'ratings'}
+			<div class="table-wrap">
+				<table>
+					<thead>
+						<tr>
+							<th>Date</th>
+							<th>Firm</th>
+							<th>Action</th>
+							<th>Rating</th>
+							<th class="num">Price Target</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each ratings as r, i (r.ts + '-' + i)}
+							<tr>
+								<td>{shortDate(r.ts)}</td>
+								<td>{r.firm ?? '—'}</td>
+								<td>{r.action ?? '—'}</td>
+								<td>{r.rating ?? '—'}</td>
+								<td class="num">{r.price_target != null ? price(r.price_target) : '—'}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		{/if}
+	</section>
+{/if}
 
 <style>
 	.back {
@@ -298,5 +422,114 @@
 		font-size: 1.05rem;
 		font-weight: 600;
 		font-variant-numeric: tabular-nums;
+	}
+	.enrich {
+		margin-top: 1.75rem;
+	}
+	.tabs {
+		display: flex;
+		gap: 0.4rem;
+		margin-bottom: 1rem;
+		flex-wrap: wrap;
+		border-bottom: 1px solid var(--border);
+		padding-bottom: 0.6rem;
+	}
+	.tabs button {
+		background: var(--panel);
+		border: 1px solid var(--border);
+		color: var(--muted);
+		border-radius: var(--radius);
+		padding: 0.35rem 0.8rem;
+		font-size: 0.85rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.tabs button:hover {
+		color: var(--text);
+		border-color: var(--accent);
+	}
+	.tabs button.active {
+		color: var(--text);
+		background: var(--panel-2);
+		border-color: var(--accent);
+	}
+	.news-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+	}
+	.news-list li {
+		display: flex;
+		gap: 1rem;
+		padding: 0.6rem 0;
+		border-bottom: 1px solid var(--border);
+	}
+	.cell-date {
+		flex: 0 0 5.5rem;
+		color: var(--muted);
+		font-size: 0.78rem;
+		font-variant-numeric: tabular-nums;
+		padding-top: 0.1rem;
+	}
+	.news-body {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+	.news-body a,
+	.news-body span:first-child {
+		color: var(--text);
+		text-decoration: none;
+		font-weight: 600;
+		font-size: 0.9rem;
+		line-height: 1.35;
+	}
+	.news-body a:hover {
+		color: var(--accent);
+	}
+	.news-source {
+		display: block;
+		margin-top: 0.2rem;
+		color: var(--muted);
+		font-size: 0.75rem;
+		font-weight: 400;
+	}
+	.table-wrap {
+		overflow-x: auto;
+	}
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.85rem;
+	}
+	th,
+	td {
+		text-align: left;
+		padding: 0.5rem 0.7rem;
+		border-bottom: 1px solid var(--border);
+		white-space: nowrap;
+	}
+	th {
+		color: var(--muted);
+		font-size: 0.72rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.4px;
+	}
+	td {
+		font-variant-numeric: tabular-nums;
+	}
+	th.num,
+	td.num {
+		text-align: right;
+	}
+	td.buy {
+		color: var(--accent-2);
+		font-weight: 600;
+	}
+	td.sell {
+		color: var(--danger);
+		font-weight: 600;
 	}
 </style>

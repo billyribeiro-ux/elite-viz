@@ -6,6 +6,7 @@ pub mod backtest;
 pub mod groups;
 pub mod indicators;
 pub mod market_data;
+pub mod news;
 pub mod portfolio;
 pub mod screener;
 pub mod settings;
@@ -27,6 +28,10 @@ pub fn api_router() -> Router<AppState> {
             get(market_data::fundamentals),
         )
         .route("/market-data/bars/{symbol}", get(market_data::bars))
+        .route("/market-data/insider/{symbol}", get(news::insider))
+        .route("/market-data/ratings/{symbol}", get(news::ratings))
+        // news
+        .route("/news", get(news::list))
         // screener
         .route("/screener/run", post(screener::run))
         .route("/screener/fields", get(screener::fields))

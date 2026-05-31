@@ -13,10 +13,11 @@ use std::sync::{Arc, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use finviz_types::{
-    Alert, Bar, Fundamentals, Instrument, Interval, Position, ProviderConfig, Quote, QuoteTick,
-    ScreenerRow, User, Watchlist,
+    Alert, AnalystRating, Bar, Fundamentals, InsiderTrade, Instrument, Interval, NewsItem,
+    Position, ProviderConfig, Quote, QuoteTick, ScreenerRow, User, Watchlist,
 };
 
+use crate::news;
 use crate::seed::{self, ScreenerExtras};
 
 /// Internal user record including the password hash (never serialized out).
@@ -49,6 +50,10 @@ struct Data {
     users: RwLock<HashMap<String, UserRecord>>,
     alerts: RwLock<HashMap<String, Alert>>,
     jwt_secret: String,
+    // Fixed anchor for synthetic news/insider/rating timestamps, captured once
+    // at boot. Generated *content* never depends on the wall clock; only the
+    // absolute timestamps are offset backwards from this base.
+    news_base_ts: i64,
 }
 
 impl AppState {
@@ -103,6 +108,7 @@ impl AppState {
                 alerts: RwLock::new(HashMap::new()),
                 jwt_secret: std::env::var("JWT_SECRET")
                     .unwrap_or_else(|_| "dev-secret-change-me".to_string()),
+                news_base_ts: now,
             }),
         }
     }
@@ -417,6 +423,53 @@ impl AppState {
             .unwrap()
             .remove(&symbol.to_ascii_uppercase())
             .is_some()
+    }
+
+    // ---- News / insider / ratings ------------------------------------------
+
+    /// Synthetic news. With `symbol`, returns that ticker's stream; otherwise a
+    /// merged market feed across all instruments. Always newest-first.
+    /// Deterministic: identical output on every call for the same arguments.
+    pub fn news(&self, symbol: Option<&str>, limit: usize) -> Vec<NewsItem> {
+        let base = self.inner.news_base_ts;
+        match symbol {
+            Some(sym) => {
+                let sym = sym.to_ascii_uppercase();
+                let Some(inst) = self.inner.instruments.iter().find(|i| i.symbol == sym) else {
+                    return Vec::new();
+                };
+                let Some(quote) = self.inner.quotes.get(&sym) else {
+                    return Vec::new();
+                };
+                news::news_for_symbol(inst, quote, base, limit)
+            }
+            None => news::market_news(
+                &self.inner.instruments,
+                |s| self.inner.quotes.get(s).cloned(),
+                base,
+                limit,
+            ),
+        }
+    }
+
+    /// Synthetic insider trades for a symbol, newest-first. Empty if unknown.
+    /// Deterministic across calls.
+    pub fn insider_trades(&self, symbol: &str, limit: usize) -> Vec<InsiderTrade> {
+        let sym = symbol.to_ascii_uppercase();
+        match self.inner.quotes.get(&sym) {
+            Some(q) => news::insider_trades(&sym, q, self.inner.news_base_ts, limit),
+            None => Vec::new(),
+        }
+    }
+
+    /// Synthetic analyst ratings for a symbol, newest-first. Empty if unknown.
+    /// Deterministic across calls.
+    pub fn analyst_ratings(&self, symbol: &str, limit: usize) -> Vec<AnalystRating> {
+        let sym = symbol.to_ascii_uppercase();
+        match self.inner.quotes.get(&sym) {
+            Some(q) => news::analyst_ratings(&sym, q, self.inner.news_base_ts, limit),
+            None => Vec::new(),
+        }
     }
 
     // ---- Realtime ----------------------------------------------------------
