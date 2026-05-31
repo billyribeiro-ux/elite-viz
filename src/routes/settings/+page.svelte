@@ -23,7 +23,7 @@
 	];
 
 	const current = $derived(PROVIDERS.find((p) => p.value === kind) ?? PROVIDERS[0]);
-	const showBaseUrl = $derived(kind === 'generic' || kind !== 'mock');
+	const showBaseUrl = $derived(kind !== 'mock');
 
 	function payload(): ProviderConfigInput {
 		return {

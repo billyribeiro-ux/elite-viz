@@ -1,4 +1,4 @@
-//! PostgreSQL persistence for FINVIZ Elite+.
+//! `PostgreSQL` persistence for FINVIZ Elite+.
 //!
 //! Gated behind the `postgres` feature so the default workspace build needs no
 //! database. The running API server currently defaults to the in-memory store

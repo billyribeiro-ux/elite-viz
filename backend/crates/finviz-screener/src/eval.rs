@@ -82,7 +82,7 @@ mod tests {
     fn row(price: f64, pe: Option<f64>, sector: &str) -> TestRow {
         TestRow {
             price,
-            pe: pe.map(Value::Num).unwrap_or(Value::Null),
+            pe: pe.map_or(Value::Null, Value::Num),
             sector: sector.into(),
         }
     }

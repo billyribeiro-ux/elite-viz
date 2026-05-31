@@ -1,4 +1,11 @@
 //! Shared application state: an in-memory market dataset.
+//!
+//! The mutable collections sit behind [`RwLock`]s and the accessors below use
+//! `.read().unwrap()` / `.write().unwrap()`. A `PoisonError` can only arise if a
+//! thread panics *while holding* one of these locks; every critical section
+//! here is a short, panic-free map/clone/sort over owned data, so propagating
+//! the panic (a poisoned lock means state is already suspect) is the correct,
+//! standard-library-idiomatic behavior rather than silently masking corruption.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -10,7 +17,7 @@ use finviz_types::{
     ScreenerRow, User, Watchlist,
 };
 
-use crate::seed;
+use crate::seed::{self, ScreenerExtras};
 
 /// Internal user record including the password hash (never serialized out).
 #[derive(Clone)]
@@ -30,6 +37,8 @@ struct Data {
     instruments: Vec<Instrument>,
     quotes: HashMap<String, Quote>,
     fundamentals: HashMap<String, Fundamentals>,
+    // Extended FINVIZ-style metrics (synthesized deterministically in `seed`).
+    extras: HashMap<String, ScreenerExtras>,
     // Mutable, user-owned collections (persisted to Postgres in a later phase).
     watchlists: RwLock<HashMap<String, Watchlist>>,
     positions: RwLock<HashMap<String, Position>>,
@@ -49,10 +58,12 @@ impl AppState {
         let mut instruments = Vec::new();
         let mut quotes = HashMap::new();
         let mut fundamentals = HashMap::new();
+        let mut extras = HashMap::new();
 
         for row in seed::dataset(now) {
             quotes.insert(row.instrument.symbol.clone(), row.quote);
             fundamentals.insert(row.instrument.symbol.clone(), row.fundamentals);
+            extras.insert(row.instrument.symbol.clone(), row.extras);
             instruments.push(row.instrument);
         }
 
@@ -83,6 +94,7 @@ impl AppState {
                 instruments,
                 quotes,
                 fundamentals,
+                extras,
                 watchlists: RwLock::new(watchlists),
                 positions: RwLock::new(positions),
                 next_id: AtomicU64::new(1),
@@ -117,10 +129,7 @@ impl AppState {
     /// existing key, so the UI can save other fields without re-entering it.
     pub fn set_provider_config(&self, mut cfg: ProviderConfig) -> ProviderConfig {
         let mut guard = self.inner.provider.write().unwrap();
-        let key_missing = match cfg.api_key.as_deref() {
-            Some(key) => key.is_empty(),
-            None => true,
-        };
+        let key_missing = cfg.api_key.as_deref().is_none_or(str::is_empty);
         if key_missing {
             cfg.api_key = guard.api_key.clone();
         }
@@ -236,21 +245,71 @@ impl AppState {
             .filter_map(|inst| {
                 let q = self.inner.quotes.get(&inst.symbol)?;
                 let f = self.inner.fundamentals.get(&inst.symbol)?;
+                let x = self.inner.extras.get(&inst.symbol)?;
                 Some(ScreenerRow {
+                    // identity / descriptive
                     symbol: inst.symbol.clone(),
                     name: inst.name.clone(),
                     sector: inst.sector.clone(),
                     industry: inst.industry.clone(),
                     exchange: inst.exchange.clone(),
+                    country: x.country.clone(),
+                    target_price: x.target_price,
+                    avg_volume: x.avg_volume,
+                    rel_volume: x.rel_volume,
+                    float_shares: x.float_shares,
+                    recom: x.recom,
+                    // market / quote
                     price: q.price,
                     change: q.change,
                     change_pct: q.change_pct,
                     volume: q.volume,
+                    // valuation
                     market_cap: f.market_cap,
                     pe: f.pe,
+                    forward_pe: x.forward_pe,
+                    peg: x.peg,
+                    ps: x.ps,
+                    pb: x.pb,
+                    price_to_fcf: x.price_to_fcf,
                     eps: f.eps,
                     dividend_yield: f.dividend_yield,
                     beta: f.beta,
+                    // profitability
+                    roa: x.roa,
+                    roe: x.roe,
+                    roic: x.roic,
+                    gross_margin: x.gross_margin,
+                    oper_margin: x.oper_margin,
+                    profit_margin: x.profit_margin,
+                    payout_ratio: x.payout_ratio,
+                    // financial health
+                    current_ratio: x.current_ratio,
+                    quick_ratio: x.quick_ratio,
+                    debt_equity: x.debt_equity,
+                    lt_debt_equity: x.lt_debt_equity,
+                    // ownership
+                    insider_own: x.insider_own,
+                    inst_own: x.inst_own,
+                    short_float: x.short_float,
+                    short_ratio: x.short_ratio,
+                    // performance
+                    perf_week: x.perf_week,
+                    perf_month: x.perf_month,
+                    perf_quarter: x.perf_quarter,
+                    perf_half: x.perf_half,
+                    perf_year: x.perf_year,
+                    perf_ytd: x.perf_ytd,
+                    // technical
+                    volatility_w: x.volatility_w,
+                    volatility_m: x.volatility_m,
+                    rsi14: x.rsi14,
+                    atr: x.atr,
+                    sma20_rel: x.sma20_rel,
+                    sma50_rel: x.sma50_rel,
+                    sma200_rel: x.sma200_rel,
+                    high_52w_pct: x.high_52w_pct,
+                    low_52w_pct: x.low_52w_pct,
                 })
             })
             .collect()

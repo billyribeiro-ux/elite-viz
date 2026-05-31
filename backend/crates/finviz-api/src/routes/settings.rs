@@ -55,10 +55,7 @@ pub async fn test(
     State(state): State<AppState>,
     Json(mut cfg): Json<ProviderConfig>,
 ) -> Json<TestResult> {
-    let key_missing = match cfg.api_key.as_deref() {
-        Some(key) => key.is_empty(),
-        None => true,
-    };
+    let key_missing = cfg.api_key.as_deref().is_none_or(str::is_empty);
     if key_missing {
         cfg.api_key = state.provider_config().api_key;
     }

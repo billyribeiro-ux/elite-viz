@@ -4,11 +4,306 @@
 
 use finviz_types::{Fundamentals, Instrument, Quote};
 
-/// One seed record: reference data + a quote + fundamentals.
+/// One seed record: reference data + a quote + fundamentals + the extended
+/// FINVIZ-style metric surface the screener filters on.
 pub struct SeedRow {
     pub instrument: Instrument,
     pub quote: Quote,
     pub fundamentals: Fundamentals,
+    pub extras: ScreenerExtras,
+}
+
+/// The extended (non-quote, non-core-fundamental) screener metrics. Every value
+/// is synthesized deterministically from the base seed row, so it is stable
+/// across runs (no wall-clock or network input). See [`derive_extras`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScreenerExtras {
+    // descriptive
+    pub country: String,
+    pub target_price: Option<f64>,
+    pub avg_volume: f64,
+    pub rel_volume: f64,
+    pub float_shares: f64,
+    pub recom: Option<f64>,
+    // valuation
+    pub forward_pe: Option<f64>,
+    pub peg: Option<f64>,
+    pub ps: Option<f64>,
+    pub pb: Option<f64>,
+    pub price_to_fcf: Option<f64>,
+    // profitability
+    pub roa: Option<f64>,
+    pub roe: Option<f64>,
+    pub roic: Option<f64>,
+    pub gross_margin: Option<f64>,
+    pub oper_margin: Option<f64>,
+    pub profit_margin: Option<f64>,
+    pub payout_ratio: Option<f64>,
+    // financial health
+    pub current_ratio: Option<f64>,
+    pub quick_ratio: Option<f64>,
+    pub debt_equity: Option<f64>,
+    pub lt_debt_equity: Option<f64>,
+    // ownership
+    pub insider_own: Option<f64>,
+    pub inst_own: Option<f64>,
+    pub short_float: Option<f64>,
+    pub short_ratio: Option<f64>,
+    // performance
+    pub perf_week: f64,
+    pub perf_month: f64,
+    pub perf_quarter: f64,
+    pub perf_half: f64,
+    pub perf_year: f64,
+    pub perf_ytd: f64,
+    // technical
+    pub volatility_w: f64,
+    pub volatility_m: f64,
+    pub rsi14: f64,
+    pub atr: f64,
+    pub sma20_rel: f64,
+    pub sma50_rel: f64,
+    pub sma200_rel: f64,
+    pub high_52w_pct: f64,
+    pub low_52w_pct: f64,
+}
+
+/// A tiny deterministic FNV-seeded LCG (mirrors the one in `state.rs`), used to
+/// give each symbol a stable, reproducible spread of synthetic metric values.
+struct SeedRng {
+    state: u64,
+}
+
+impl SeedRng {
+    /// Seed from the ticker symbol plus a salt so independent metric families
+    /// draw from uncorrelated streams while staying deterministic.
+    fn new(symbol: &str, salt: u64) -> Self {
+        let mut state = 0xcbf29ce484222325u64; // FNV offset basis
+        for b in symbol.bytes() {
+            state = (state ^ b as u64).wrapping_mul(0x100000001b3);
+        }
+        state ^= salt.wrapping_mul(0x9e3779b97f4a7c15);
+        Self { state: state | 1 }
+    }
+
+    /// Next value in `[0, 1)`.
+    fn unit(&mut self) -> f64 {
+        self.state = self
+            .state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        ((self.state >> 11) as f64) / ((1u64 << 53) as f64)
+    }
+
+    /// Next value uniformly in `[lo, hi)`.
+    fn range(&mut self, lo: f64, hi: f64) -> f64 {
+        lo + self.unit() * (hi - lo)
+    }
+}
+
+fn round2(x: f64) -> f64 {
+    (x * 100.0).round() / 100.0
+}
+
+/// Derive the full extended metric set for one symbol from its base seed.
+///
+/// All values are plausible and internally consistent: growth/tech names skew
+/// to richer multiples and stronger trailing performance, value/defensive names
+/// to cheaper multiples and steadier technicals. Margins, RSI, ownership, etc.
+/// are clamped to realistic ranges. Everything is a pure function of the inputs
+/// plus a per-symbol seeded RNG, so it is identical on every boot.
+#[allow(clippy::too_many_arguments)]
+fn derive_extras(
+    symbol: &str,
+    sector: &str,
+    price: f64,
+    change_pct: f64,
+    volume: i64,
+    cap: f64,
+    pe: f64,
+    eps: f64,
+    div_yield: f64,
+) -> ScreenerExtras {
+    let mut rng = SeedRng::new(symbol, 0x01);
+    let growthy = sector == "Technology" || sector == "Communication Services";
+    let defensive = sector == "Consumer Defensive" || sector == "Healthcare";
+    let profitable = pe > 0.0 && eps > 0.0;
+
+    // --- descriptive ---
+    // The seed is a US large-cap universe.
+    let country = "USA".to_string();
+    // Analyst price target: a few percent above current, more upside for growth.
+    let upside = if growthy {
+        rng.range(0.02, 0.22)
+    } else {
+        rng.range(-0.05, 0.12)
+    };
+    let target_price = profitable.then(|| round2(price * (1.0 + upside)));
+    // Avg volume drifts a bit from today's volume; rel_volume is the ratio.
+    let avg_volume = (volume as f64 * rng.range(0.8, 1.25)).round();
+    let rel_volume = if avg_volume > 0.0 {
+        round2(volume as f64 / avg_volume)
+    } else {
+        1.0
+    };
+    let shares = if price > 0.0 { cap / price } else { 0.0 };
+    // Float: 80-99% of shares outstanding (insiders/locked-up shares excluded).
+    let float_shares = (shares * rng.range(0.80, 0.99)).round();
+    // Recommendation 1..5; growth names trend toward "buy" (lower).
+    let recom = profitable.then(|| {
+        if growthy {
+            round2(rng.range(1.4, 2.6))
+        } else {
+            round2(rng.range(1.8, 3.4))
+        }
+    });
+
+    // --- valuation ---
+    // Forward P/E a touch below trailing for growers, above for shrinkers.
+    let forward_pe = (pe > 0.0).then(|| {
+        let factor = if growthy {
+            rng.range(0.80, 0.98)
+        } else {
+            rng.range(0.92, 1.08)
+        };
+        round2(pe * factor)
+    });
+    // Earnings growth implied by PEG; growthy names grow faster.
+    let growth = if growthy {
+        rng.range(15.0, 40.0)
+    } else {
+        rng.range(3.0, 14.0)
+    };
+    let peg = (pe > 0.0 && growth > 0.0).then(|| round2(pe / growth));
+    // Price/Sales, Price/Book, Price/FCF: richer for growth, cheaper for value.
+    let ps = Some(round2(if growthy {
+        rng.range(4.0, 14.0)
+    } else {
+        rng.range(0.6, 4.5)
+    }));
+    let pb = Some(round2(if growthy {
+        rng.range(4.0, 22.0)
+    } else {
+        rng.range(0.8, 6.0)
+    }));
+    let price_to_fcf = profitable.then(|| {
+        round2(if growthy {
+            rng.range(20.0, 60.0)
+        } else {
+            rng.range(8.0, 30.0)
+        })
+    });
+
+    // --- profitability (percent) ---
+    let profit_margin = profitable.then(|| {
+        round2(if growthy {
+            rng.range(12.0, 38.0)
+        } else {
+            rng.range(3.0, 20.0)
+        })
+    });
+    let oper_margin = profit_margin.map(|pm| round2(pm * rng.range(1.05, 1.4)));
+    let gross_margin = Some(round2(if growthy {
+        rng.range(45.0, 80.0)
+    } else {
+        rng.range(20.0, 55.0)
+    }));
+    let roe = profitable.then(|| {
+        round2(if growthy {
+            rng.range(18.0, 55.0)
+        } else {
+            rng.range(6.0, 28.0)
+        })
+    });
+    let roa = roe.map(|e| round2(e * rng.range(0.25, 0.6)));
+    let roic = roe.map(|e| round2(e * rng.range(0.6, 0.95)));
+    // Payout ratio tracks dividend policy.
+    let payout_ratio = (div_yield > 0.0).then(|| round2(rng.range(15.0, 70.0)));
+
+    // --- financial health ---
+    let current_ratio = Some(round2(rng.range(0.8, 3.5)));
+    let quick_ratio = current_ratio.map(|c| round2((c * rng.range(0.55, 0.9)).max(0.2)));
+    let debt_equity = Some(round2(if defensive {
+        rng.range(0.1, 1.2)
+    } else {
+        rng.range(0.0, 2.2)
+    }));
+    let lt_debt_equity = debt_equity.map(|d| round2(d * rng.range(0.6, 0.95)));
+
+    // --- ownership (percent) ---
+    let insider_own = Some(round2(rng.range(0.05, 8.0)));
+    let inst_own = Some(round2(rng.range(45.0, 92.0)));
+    let short_float = Some(round2(rng.range(0.4, 18.0)));
+    let short_ratio = short_float.map(|_| round2(rng.range(0.5, 7.0)));
+
+    // --- performance (percent) ---
+    // Anchor longer windows to today's move so direction is coherent, then add
+    // per-window seeded noise. Growth names get a wider, more positive spread.
+    let bias = if growthy { 6.0 } else { 0.0 };
+    let perf_week = round2(change_pct * rng.range(1.0, 3.0) + rng.range(-4.0, 4.0));
+    let perf_month = round2(perf_week + rng.range(-8.0, 12.0) + bias * 0.3);
+    let perf_quarter = round2(perf_month + rng.range(-12.0, 20.0) + bias * 0.5);
+    let perf_half = round2(perf_quarter + rng.range(-15.0, 28.0) + bias);
+    let perf_year = round2((perf_half + rng.range(-20.0, 45.0) + bias * 2.0).clamp(-60.0, 120.0));
+    let perf_ytd = round2(perf_half * rng.range(0.5, 1.1));
+
+    // --- technical ---
+    let volatility_w = round2(rng.range(1.0, 6.0) + if growthy { 1.5 } else { 0.0 });
+    let volatility_m = round2(volatility_w * rng.range(1.0, 1.6));
+    let rsi14 = round2(rng.range(20.0, 80.0));
+    // ATR scales with price and weekly volatility.
+    let atr = round2((price * volatility_w / 100.0).max(0.01));
+    // SMA distances cohere with trailing performance (uptrend => price above).
+    let sma20_rel = round2((perf_month * 0.25 + rng.range(-3.0, 3.0)).clamp(-25.0, 25.0));
+    let sma50_rel = round2((perf_quarter * 0.25 + rng.range(-5.0, 5.0)).clamp(-40.0, 40.0));
+    let sma200_rel = round2((perf_year * 0.4 + rng.range(-8.0, 8.0)).clamp(-60.0, 90.0));
+    // 52-week high is at-or-above price (pct <= 0); low at-or-below (pct >= 0).
+    let high_52w_pct = round2(-rng.range(0.0, 35.0));
+    let low_52w_pct = round2(rng.range(5.0, 110.0));
+
+    ScreenerExtras {
+        country,
+        target_price,
+        avg_volume,
+        rel_volume,
+        float_shares,
+        recom,
+        forward_pe,
+        peg,
+        ps,
+        pb,
+        price_to_fcf,
+        roa,
+        roe,
+        roic,
+        gross_margin,
+        oper_margin,
+        profit_margin,
+        payout_ratio,
+        current_ratio,
+        quick_ratio,
+        debt_equity,
+        lt_debt_equity,
+        insider_own,
+        inst_own,
+        short_float,
+        short_ratio,
+        perf_week,
+        perf_month,
+        perf_quarter,
+        perf_half,
+        perf_year,
+        perf_ytd,
+        volatility_w,
+        volatility_m,
+        rsi14,
+        atr,
+        sma20_rel,
+        sma50_rel,
+        sma200_rel,
+        high_52w_pct,
+        low_52w_pct,
+    }
 }
 
 /// Build the seed dataset. `now` is the quote timestamp (epoch seconds).
@@ -460,6 +755,7 @@ pub fn dataset(now: i64) -> Vec<SeedRow> {
                         beta: Some(beta),
                         shares_outstanding: if price > 0.0 { cap / price } else { 0.0 },
                     },
+                    extras: derive_extras(sym, sector, price, change_pct, vol, cap, pe, eps, dy),
                 }
             },
         )

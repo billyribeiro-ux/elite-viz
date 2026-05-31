@@ -6,10 +6,14 @@ import type {
 	ApiError,
 	AuthResponse,
 	Bar,
+	BBandPoint,
 	FieldInfo,
 	Fundamentals,
+	GroupBy,
+	GroupRow,
 	IndicatorSeries,
 	Instrument,
+	MacdPoint,
 	PortfolioSummary,
 	Position,
 	Preset,
@@ -54,6 +58,17 @@ export async function getFields(fetchFn: FetchLike = fetch): Promise<FieldInfo[]
 	return json<FieldInfo[]>(await fetchFn('/api/v1/screener/fields'));
 }
 
+// ---- groups ---------------------------------------------------------------
+
+export async function getGroups(
+	by: GroupBy = 'sector',
+	fetchFn: FetchLike = fetch
+): Promise<GroupRow[]> {
+	return json<GroupRow[]>(
+		await fetchFn(`/api/v1/groups?by=${encodeURIComponent(by)}`)
+	);
+}
+
 // ---- market data ----------------------------------------------------------
 
 export async function getInstruments(fetchFn: FetchLike = fetch): Promise<Instrument[]> {
@@ -88,7 +103,7 @@ export async function getBars(
 }
 
 export async function getIndicator(
-	indicator: 'sma' | 'rsi',
+	indicator: 'sma' | 'ema' | 'rsi',
 	symbol: string,
 	opts: { period?: number; limit?: number } = {},
 	fetchFn: FetchLike = fetch
@@ -102,6 +117,39 @@ export async function getIndicator(
 			`/api/v1/indicators/${indicator}/${encodeURIComponent(symbol)}${qs ? `?${qs}` : ''}`
 		)
 	);
+}
+
+/** Bollinger Bands — best-effort; backend returns `{ ..., points: BBandPoint[] }`. */
+export async function getBBands(
+	symbol: string,
+	opts: { period?: number; limit?: number } = {},
+	fetchFn: FetchLike = fetch
+): Promise<BBandPoint[]> {
+	const params = new URLSearchParams();
+	if (opts.period) params.set('period', String(opts.period));
+	if (opts.limit) params.set('limit', String(opts.limit));
+	const qs = params.toString();
+	const res = await fetchFn(
+		`/api/v1/indicators/bbands/${encodeURIComponent(symbol)}${qs ? `?${qs}` : ''}`
+	);
+	const body = await json<{ points?: BBandPoint[] } | BBandPoint[]>(res);
+	return Array.isArray(body) ? body : (body.points ?? []);
+}
+
+/** MACD — best-effort; backend returns `{ ..., points: MacdPoint[] }`. */
+export async function getMacd(
+	symbol: string,
+	opts: { limit?: number } = {},
+	fetchFn: FetchLike = fetch
+): Promise<MacdPoint[]> {
+	const params = new URLSearchParams();
+	if (opts.limit) params.set('limit', String(opts.limit));
+	const qs = params.toString();
+	const res = await fetchFn(
+		`/api/v1/indicators/macd/${encodeURIComponent(symbol)}${qs ? `?${qs}` : ''}`
+	);
+	const body = await json<{ points?: MacdPoint[] } | MacdPoint[]>(res);
+	return Array.isArray(body) ? body : (body.points ?? []);
 }
 
 // ---- watchlists -----------------------------------------------------------

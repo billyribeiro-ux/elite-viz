@@ -1,8 +1,10 @@
 //! FINVIZ Elite+ API server (Axum).
 //!
-//! Phase 1: serves a seeded in-memory dataset over a versioned REST API with
-//! CORS, request tracing, and graceful shutdown. Persistence and live data
-//! adapters arrive in later phases.
+//! Serves a versioned REST + WebSocket API over an in-memory market dataset:
+//! market data, the screener DSL, technical indicators, watchlists, portfolio
+//! valuation, alerts, JWT-based auth, and pluggable live-quote providers — all
+//! behind CORS, request tracing, and graceful shutdown. An optional
+//! PostgreSQL-backed store lives in `finviz-db` (the `postgres` feature).
 
 mod auth;
 mod error;
@@ -94,8 +96,8 @@ async fn shutdown_signal() {
     let terminate = std::future::pending::<()>();
 
     tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
+        () = ctrl_c => {},
+        () = terminate => {},
     }
 
     tracing::info!("shutdown signal received");

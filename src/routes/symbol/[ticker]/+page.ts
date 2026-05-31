@@ -1,20 +1,46 @@
 import type { PageLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { getBars, getFundamentals, getIndicator, getInstruments, getQuote } from '$lib/api';
+import {
+	getBBands,
+	getBars,
+	getFundamentals,
+	getIndicator,
+	getInstruments,
+	getQuote
+} from '$lib/api';
+import type { BBandPoint, IndicatorSeries } from '$lib/types';
+
+const LIMIT = 120;
 
 export const load: PageLoad = async ({ params, fetch }) => {
 	const symbol = params.ticker.toUpperCase();
+
+	// Core data: a failure here means the symbol genuinely has no data (404).
+	let quote, fundamentals, bars, sma, instruments;
 	try {
-		const [quote, fundamentals, bars, sma, instruments] = await Promise.all([
+		[quote, fundamentals, bars, sma, instruments] = await Promise.all([
 			getQuote(symbol, fetch),
 			getFundamentals(symbol, fetch),
-			getBars(symbol, { interval: '1d', limit: 120 }, fetch),
-			getIndicator('sma', symbol, { period: 20, limit: 120 }, fetch),
+			getBars(symbol, { interval: '1d', limit: LIMIT }, fetch),
+			getIndicator('sma', symbol, { period: 20, limit: LIMIT }, fetch),
 			getInstruments(fetch)
 		]);
-		const instrument = instruments.find((i) => i.symbol === symbol) ?? null;
-		return { symbol, quote, fundamentals, bars, sma, instrument };
 	} catch {
 		throw error(404, `No data for ${symbol}`);
 	}
+
+	const instrument = instruments.find((i) => i.symbol === symbol) ?? null;
+
+	// Extended indicators are best-effort enhancements; null on failure.
+	const [ema, rsi, bbands] = await Promise.all([
+		getIndicator('ema', symbol, { period: 20, limit: LIMIT }, fetch).catch(
+			() => null as IndicatorSeries | null
+		),
+		getIndicator('rsi', symbol, { period: 14, limit: LIMIT }, fetch).catch(
+			() => null as IndicatorSeries | null
+		),
+		getBBands(symbol, { period: 20, limit: LIMIT }, fetch).catch(() => [] as BBandPoint[])
+	]);
+
+	return { symbol, quote, fundamentals, bars, sma, ema, rsi, bbands, instrument };
 };

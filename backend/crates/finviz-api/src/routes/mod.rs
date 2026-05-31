@@ -2,6 +2,7 @@
 
 pub mod alerts;
 pub mod auth;
+pub mod groups;
 pub mod indicators;
 pub mod market_data;
 pub mod portfolio;
@@ -32,6 +33,12 @@ pub fn api_router() -> Router<AppState> {
         // indicators
         .route("/indicators/sma/{symbol}", get(indicators::sma))
         .route("/indicators/rsi/{symbol}", get(indicators::rsi))
+        .route("/indicators/ema/{symbol}", get(indicators::ema))
+        .route("/indicators/macd/{symbol}", get(indicators::macd))
+        .route("/indicators/bbands/{symbol}", get(indicators::bbands))
+        .route("/indicators/atr/{symbol}", get(indicators::atr))
+        // groups
+        .route("/groups", get(groups::list))
         // watchlists
         .route(
             "/watchlists",

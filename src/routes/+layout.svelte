@@ -8,6 +8,8 @@
 
 	const links = [
 		{ href: '/', label: 'Screener' },
+		{ href: '/groups', label: 'Groups' },
+		{ href: '/map', label: 'Map' },
 		{ href: '/portfolio', label: 'Portfolio' },
 		{ href: '/watchlists', label: 'Watchlists' },
 		{ href: '/alerts', label: 'Alerts' },
@@ -18,7 +20,9 @@
 		return href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
 	}
 
-	onMount(initAuth);
+	onMount(() => {
+		initAuth();
+	});
 </script>
 
 <div class="shell">
