@@ -19,6 +19,7 @@ import type {
 	InsiderTrade,
 	Instrument,
 	MacdPoint,
+	MarketAsset,
 	NewsItem,
 	OptionChain,
 	PortfolioSummary,
@@ -178,6 +179,30 @@ export async function getGroups(
 	return json<GroupRow[]>(
 		await fetchFn(`/api/v1/groups?by=${encodeURIComponent(by)}`)
 	);
+}
+
+// ---- markets (futures / forex / crypto) -----------------------------------
+
+/**
+ * Market board helper. Tolerates either a bare `MarketAsset[]` or a
+ * `{ items: MarketAsset[] }` wrapper, so it stays resilient to the backend
+ * shape settling.
+ */
+async function getMarketBoard(path: string, fetchFn: FetchLike): Promise<MarketAsset[]> {
+	const body = await json<{ items?: MarketAsset[] } | MarketAsset[]>(await fetchFn(path));
+	return Array.isArray(body) ? body : (body.items ?? []);
+}
+
+export async function getFutures(fetchFn: FetchLike = fetch): Promise<MarketAsset[]> {
+	return getMarketBoard('/api/v1/futures', fetchFn);
+}
+
+export async function getForex(fetchFn: FetchLike = fetch): Promise<MarketAsset[]> {
+	return getMarketBoard('/api/v1/forex', fetchFn);
+}
+
+export async function getCrypto(fetchFn: FetchLike = fetch): Promise<MarketAsset[]> {
+	return getMarketBoard('/api/v1/crypto', fetchFn);
 }
 
 // ---- market data ----------------------------------------------------------

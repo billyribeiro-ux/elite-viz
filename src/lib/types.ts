@@ -362,6 +362,20 @@ export interface OptionChain {
 	contracts: OptionContract[];
 }
 
+// ---- markets (futures / forex / crypto) -----------------------------------
+
+/** A tradable asset row from `/api/v1/{futures,forex,crypto}`. */
+export interface MarketAsset {
+	symbol: string;
+	name: string;
+	group: string;
+	price: number;
+	change: number;
+	change_pct: number;
+	perf_week: number;
+	perf_month: number;
+}
+
 // ---- ETFs -----------------------------------------------------------------
 
 /** A single ETF holding. */

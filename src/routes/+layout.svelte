@@ -9,6 +9,7 @@
 	const links = [
 		{ href: '/', label: 'Screener' },
 		{ href: '/groups', label: 'Groups' },
+		{ href: '/markets', label: 'Markets' },
 		{ href: '/map', label: 'Map' },
 		{ href: '/etf', label: 'ETFs' },
 		{ href: '/news', label: 'News' },

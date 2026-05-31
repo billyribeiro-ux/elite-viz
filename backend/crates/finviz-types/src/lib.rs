@@ -403,6 +403,30 @@ pub struct EtfProfile {
     pub category: String,
 }
 
+/// One row on a synthetic market board (futures, forex or crypto).
+///
+/// A single reusable shape covers all three boards: `group` carries the
+/// board-specific bucket label (e.g. `Indices`, `Energy`, `Metals`,
+/// `Agriculture` for futures; `Major`/`Minor` for forex; `Crypto` for crypto).
+/// Prices are illustrative, not real market data.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MarketAsset {
+    pub symbol: Symbol,
+    pub name: String,
+    /// Board-specific bucket label, e.g. `Indices`, `Energy`, `Major`, `Crypto`.
+    pub group: String,
+    /// Last price (futures price, FX exchange rate, or crypto price in USD).
+    pub price: f64,
+    /// Absolute change versus the prior session, in price units.
+    pub change: f64,
+    /// Percent change versus the prior session.
+    pub change_pct: f64,
+    /// Trailing one-week performance, in percent.
+    pub perf_week: f64,
+    /// Trailing one-month performance, in percent.
+    pub perf_month: f64,
+}
+
 /// A price/metric alert: a screener expression evaluated against one symbol.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Alert {

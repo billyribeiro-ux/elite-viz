@@ -3,6 +3,7 @@
 pub mod alerts;
 pub mod auth;
 pub mod backtest;
+pub mod boards;
 pub mod etf;
 pub mod export;
 pub mod groups;
@@ -66,6 +67,10 @@ pub fn api_router() -> Router<AppState> {
         // ETF analysis
         .route("/etf", get(etf::list))
         .route("/etf/{symbol}", get(etf::get))
+        // market boards (futures / forex / crypto)
+        .route("/futures", get(boards::futures))
+        .route("/forex", get(boards::forex))
+        .route("/crypto", get(boards::crypto))
         // CSV export
         .route("/export/screener", post(export::screener))
         .route("/export/groups", get(export::groups))

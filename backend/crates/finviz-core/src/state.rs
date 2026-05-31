@@ -14,10 +14,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use finviz_types::{
     Alert, AnalystRating, Bar, EtfProfile, Fundamentals, InsiderTrade, Instrument, Interval,
-    NewsItem, OptionChain, Position, ProviderConfig, Quote, QuoteTick, SavedScreen, ScreenerRow,
-    User, Watchlist,
+    MarketAsset, NewsItem, OptionChain, Position, ProviderConfig, Quote, QuoteTick, SavedScreen,
+    ScreenerRow, User, Watchlist,
 };
 
+use crate::boards;
 use crate::derivatives;
 use crate::news;
 use crate::seed::{self, ScreenerExtras};
@@ -592,6 +593,26 @@ impl AppState {
     /// `true` if `symbol` (case-insensitive) is a designated synthetic ETF.
     pub fn is_etf(&self, symbol: &str) -> bool {
         derivatives::is_etf(symbol)
+    }
+
+    // ---- Market boards (futures / forex / crypto) --------------------------
+
+    /// The synthetic **futures** board (equity indices, energy, metals,
+    /// agriculture). Deterministic across calls and boots; prices illustrative.
+    pub fn futures(&self) -> Vec<MarketAsset> {
+        boards::futures()
+    }
+
+    /// The synthetic **forex** board (USD majors plus a few crosses). Each
+    /// `price` is the exchange rate. Deterministic; rates illustrative.
+    pub fn forex(&self) -> Vec<MarketAsset> {
+        boards::forex()
+    }
+
+    /// The synthetic **crypto** board (BTC, ETH, and other major coins, in
+    /// USD). Deterministic across calls and boots; prices illustrative.
+    pub fn crypto(&self) -> Vec<MarketAsset> {
+        boards::crypto()
     }
 
     // ---- Realtime ----------------------------------------------------------

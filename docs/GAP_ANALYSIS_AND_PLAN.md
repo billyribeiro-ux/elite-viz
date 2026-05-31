@@ -33,7 +33,7 @@ dropped — every gap is captured as a tracked wave below.
 | Analyst ratings | tables | per-symbol table | ✅ |
 | Options chain | view + export | per-symbol chain (calls/puts) | ✅ |
 | ETF analysis | holdings + treemap | profiles + holdings treemap | ✅ |
-| Futures/Forex/Crypto | prices + heatmaps | ❌ | ❌ |
+| Futures/Forex/Crypto | prices + heatmaps | boards + heat-strip + perf | ✅ |
 | Real-time/premarket/AH | yes | jittered WS + pluggable providers | 🟡 |
 | Auth (JWT) | account | ✅ | ✅ |
 | Export API / tokens | yes | provider settings | 🟡 |
@@ -110,7 +110,7 @@ set, and register them as screener fields.
 - Synthetic options chain (`routes/options.rs`) + `/symbol` options tab.
 - ETF holdings + treemap (`routes/etf.rs`) + `/etf/[symbol]` page.
 
-### Wave 8 — Futures / Forex / Crypto boards
+### Wave 8 — Futures / Forex / Crypto boards  ✅ DONE
 - Synthetic boards + heatmaps + pages.
 
 ### Wave 9 — Pattern recognition
