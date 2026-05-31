@@ -85,6 +85,15 @@ export interface ApiError {
 	message: string;
 }
 
+/** A saved screener query from `/api/v1/screener/saved`. */
+export interface SavedScreen {
+	id: string;
+	name: string;
+	query: string;
+	sort?: string;
+	order?: SortOrder;
+}
+
 export interface Quote {
 	symbol: string;
 	price: number;
@@ -229,4 +238,184 @@ export interface Alert {
 
 export interface AlertStatus extends Alert {
 	triggered: boolean;
+}
+
+// ---- backtesting ----------------------------------------------------------
+
+export type RuleParamType = 'int' | 'float' | 'bool';
+
+/** A single configurable parameter for a rule kind, from the rules catalog. */
+export interface RuleParam {
+	name: string;
+	type: RuleParamType;
+	default?: number | boolean;
+	label?: string;
+}
+
+/** A rule kind in the catalog returned by `/api/v1/backtest/rules`. */
+export interface RuleSpec {
+	kind: string;
+	label?: string;
+	params?: RuleParam[];
+}
+
+/** Entry rule: a kind plus arbitrary param values. */
+export interface StrategyEntry {
+	kind: string;
+	[param: string]: number | boolean | string;
+}
+
+export interface BacktestStrategy {
+	entry: StrategyEntry;
+	time_exit?: number;
+	stop_loss_pct?: number;
+}
+
+export interface BacktestRequest {
+	symbol: string;
+	strategy: BacktestStrategy;
+	limit?: number;
+}
+
+export interface BacktestTrade {
+	entry_ts: number;
+	entry_price: number;
+	exit_ts: number;
+	exit_price: number;
+	return_pct: number;
+	bars_held: number;
+}
+
+export interface EquityPoint {
+	ts: number;
+	equity: number;
+}
+
+export interface BacktestResult {
+	trades: BacktestTrade[];
+	total_return_pct: number;
+	avg_return_pct: number;
+	win_rate: number;
+	max_drawdown_pct: number;
+	sharpe: number;
+	calmar: number;
+	equity_curve: EquityPoint[];
+}
+
+// ---- news + quote-detail enrichment ---------------------------------------
+
+/** A single news headline from `/api/v1/news`. */
+export interface NewsItem {
+	id: string;
+	ts: number;
+	symbol: string | null;
+	headline: string;
+	source: string;
+	url: string;
+	category: string;
+}
+
+/** An insider transaction from `/api/v1/market-data/insider/{symbol}`. */
+export interface InsiderTrade {
+	symbol: string;
+	insider_name: string;
+	relation: string;
+	transaction: 'Buy' | 'Sell';
+	shares: number;
+	price: number;
+	value: number;
+	ts: number;
+}
+
+/** An analyst rating from `/api/v1/market-data/ratings/{symbol}`. */
+export interface AnalystRating {
+	symbol: string;
+	firm: string;
+	action: string;
+	rating: string;
+	price_target: number | null;
+	ts: number;
+}
+
+// ---- options chain --------------------------------------------------------
+
+/** A single options contract from `/api/v1/options/{symbol}`. */
+export interface OptionContract {
+	contract: string;
+	kind: 'call' | 'put';
+	strike: number;
+	expiry: string;
+	bid: number;
+	ask: number;
+	last: number;
+	volume: number;
+	open_interest: number;
+	implied_vol: number;
+	delta: number;
+}
+
+/** An options chain from `/api/v1/options/{symbol}`. */
+export interface OptionChain {
+	symbol: string;
+	underlying_price: number;
+	expiries: string[];
+	contracts: OptionContract[];
+}
+
+// ---- pattern recognition --------------------------------------------------
+
+/** Known chart-pattern kinds (casing may vary; treated as a hint, not a hard set). */
+export type PatternKind =
+	| 'channelUp'
+	| 'channelDown'
+	| 'triangleAscending'
+	| 'triangleDescending'
+	| 'triangleSymmetric'
+	| 'wedge'
+	| 'doubleTop'
+	| 'doubleBottom'
+	| 'headAndShoulders';
+
+/** A detected chart pattern from `/api/v1/patterns/{symbol}`. */
+export interface Pattern {
+	/** One of the known `PatternKind` values, or any raw string the backend emits. */
+	kind: PatternKind | string;
+	start_ts: number;
+	end_ts: number;
+	/** Confidence in 0..1. */
+	confidence: number;
+	description: string;
+}
+
+// ---- markets (futures / forex / crypto) -----------------------------------
+
+/** A tradable asset row from `/api/v1/{futures,forex,crypto}`. */
+export interface MarketAsset {
+	symbol: string;
+	name: string;
+	group: string;
+	price: number;
+	change: number;
+	change_pct: number;
+	perf_week: number;
+	perf_month: number;
+}
+
+// ---- ETFs -----------------------------------------------------------------
+
+/** A single ETF holding. */
+export interface EtfHolding {
+	symbol: string;
+	name: string;
+	weight: number;
+}
+
+/** An ETF profile from `/api/v1/etf` (list) or `/api/v1/etf/{symbol}`. */
+export interface EtfProfile {
+	symbol: string;
+	name: string;
+	holdings: EtfHolding[];
+	expense_ratio: number;
+	aum: number;
+	category: string;
 }

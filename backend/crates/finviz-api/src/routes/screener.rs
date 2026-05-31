@@ -173,5 +173,23 @@ pub async fn presets() -> Json<Vec<Preset>> {
             label: "Below 200-day SMA",
             query: "sma200_rel < 0",
         },
+        // ---- Trend / chart-pattern signals ----
+        // These approximate the technical "signals" surface using ScreenerRow
+        // fields (the screener DSL does not see detected chart patterns).
+        Preset {
+            id: "near-52w-high",
+            label: "Near 52-week high",
+            query: "high_52w_pct > -3",
+        },
+        Preset {
+            id: "strong-uptrend",
+            label: "Strong uptrend (above rising SMAs)",
+            query: "sma200_rel > 5 and sma50_rel > 0 and sma20_rel > 0",
+        },
+        Preset {
+            id: "breakout-momentum",
+            label: "Breakout momentum (near highs, positive momentum)",
+            query: "high_52w_pct > -5 and perf_month > 5 and sma50_rel > 0",
+        },
     ])
 }

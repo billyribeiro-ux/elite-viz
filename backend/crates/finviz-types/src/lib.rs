@@ -200,6 +200,21 @@ pub struct Watchlist {
     pub symbols: Vec<Symbol>,
 }
 
+/// A user-saved screener query for quick re-running.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SavedScreen {
+    pub id: String,
+    pub name: String,
+    /// Filter DSL, e.g. `price > 100 and pe < 30`.
+    pub query: String,
+    /// Optional field to sort by.
+    #[serde(default)]
+    pub sort: Option<String>,
+    /// Optional sort order, `"asc"` or `"desc"`.
+    #[serde(default)]
+    pub order: Option<String>,
+}
+
 /// A single open position in a portfolio.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Position {
@@ -280,6 +295,136 @@ pub struct ProviderConfig {
 pub struct User {
     pub id: String,
     pub email: String,
+}
+
+/// A single synthetic news headline.
+///
+/// `category` is one of `"markets"`, `"earnings"`, `"analyst"`, `"insider"`,
+/// or `"general"`. `symbol` is `None` for broad-market items.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NewsItem {
+    pub id: String,
+    /// Publication timestamp, Unix epoch seconds.
+    pub ts: i64,
+    pub symbol: Option<Symbol>,
+    pub headline: String,
+    pub source: String,
+    pub url: String,
+    pub category: String,
+}
+
+/// A synthetic insider transaction (Form 4 style).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct InsiderTrade {
+    pub symbol: Symbol,
+    pub insider_name: String,
+    /// Relationship to the issuer, e.g. `CEO`, `CFO`, `Director`, `10% Owner`.
+    pub relation: String,
+    /// `"Buy"` or `"Sell"`.
+    pub transaction: String,
+    pub shares: i64,
+    pub price: f64,
+    /// `shares as f64 * price`, in dollars.
+    pub value: f64,
+    /// Transaction timestamp, Unix epoch seconds.
+    pub ts: i64,
+}
+
+/// A synthetic analyst rating action.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AnalystRating {
+    pub symbol: Symbol,
+    /// Issuing research firm, e.g. `Morgan Stanley`.
+    pub firm: String,
+    /// `"Upgrade"`, `"Downgrade"`, `"Initiated"`, or `"Reiterated"`.
+    pub action: String,
+    /// Resulting rating, e.g. `Buy`, `Hold`, `Sell`, `Overweight`.
+    pub rating: String,
+    pub price_target: Option<f64>,
+    /// Rating timestamp, Unix epoch seconds.
+    pub ts: i64,
+}
+
+/// A single synthetic option contract (one strike / expiry / side).
+///
+/// Pricing is *illustrative only* — a crude intrinsic-plus-time-value sketch,
+/// not a real options-pricing model. See `finviz_core::derivatives` for the
+/// (approximate) formulas.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct OptionContract {
+    /// OCC-style contract id, e.g. `AAPL250117C00210000`.
+    pub contract: String,
+    /// `"call"` or `"put"`.
+    pub kind: String,
+    pub strike: f64,
+    /// Expiry date, `YYYY-MM-DD`.
+    pub expiry: String,
+    pub bid: f64,
+    pub ask: f64,
+    pub last: f64,
+    pub volume: i64,
+    pub open_interest: i64,
+    /// Implied volatility as a fraction (e.g. `0.35` == 35%).
+    pub implied_vol: f64,
+    /// Rough option delta: calls in `0..1`, puts in `-1..0`, ATM ≈ ±0.5.
+    pub delta: f64,
+}
+
+/// A synthetic option chain for one underlying across several expiries.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct OptionChain {
+    pub symbol: Symbol,
+    pub underlying_price: f64,
+    /// The distinct expiry dates present in `contracts`, ascending.
+    pub expiries: Vec<String>,
+    pub contracts: Vec<OptionContract>,
+}
+
+/// A single holding inside a synthetic ETF.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EtfHolding {
+    pub symbol: Symbol,
+    pub name: String,
+    /// Portfolio weight, in percent (the holdings sum to ≈ 100).
+    pub weight: f64,
+}
+
+/// A synthetic ETF profile: descriptive metadata plus its top holdings.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EtfProfile {
+    pub symbol: Symbol,
+    pub name: String,
+    pub holdings: Vec<EtfHolding>,
+    /// Annual expense ratio, in percent (e.g. `0.09`).
+    pub expense_ratio: f64,
+    /// Assets under management, in dollars.
+    pub aum: f64,
+    /// Broad category label, e.g. `Large Blend` or `Technology`.
+    pub category: String,
+}
+
+/// One row on a synthetic market board (futures, forex or crypto).
+///
+/// A single reusable shape covers all three boards: `group` carries the
+/// board-specific bucket label (e.g. `Indices`, `Energy`, `Metals`,
+/// `Agriculture` for futures; `Major`/`Minor` for forex; `Crypto` for crypto).
+/// Prices are illustrative, not real market data.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MarketAsset {
+    pub symbol: Symbol,
+    pub name: String,
+    /// Board-specific bucket label, e.g. `Indices`, `Energy`, `Major`, `Crypto`.
+    pub group: String,
+    /// Last price (futures price, FX exchange rate, or crypto price in USD).
+    pub price: f64,
+    /// Absolute change versus the prior session, in price units.
+    pub change: f64,
+    /// Percent change versus the prior session.
+    pub change_pct: f64,
+    /// Trailing one-week performance, in percent.
+    pub perf_week: f64,
+    /// Trailing one-month performance, in percent.
+    pub perf_month: f64,
 }
 
 /// A price/metric alert: a screener expression evaluated against one symbol.

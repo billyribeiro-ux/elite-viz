@@ -398,7 +398,9 @@ dependencies = [
  "anyhow",
  "axum",
  "finviz-auth",
+ "finviz-backtest",
  "finviz-core",
+ "finviz-patterns",
  "finviz-screener",
  "finviz-types",
  "reqwest",
@@ -423,6 +425,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "finviz-backtest"
+version = "0.1.0"
+dependencies = [
+ "finviz-types",
+ "serde",
+]
+
+[[package]]
 name = "finviz-core"
 version = "0.1.0"
 dependencies = [
@@ -438,6 +448,14 @@ dependencies = [
  "anyhow",
  "finviz-types",
  "sqlx",
+]
+
+[[package]]
+name = "finviz-patterns"
+version = "0.1.0"
+dependencies = [
+ "finviz-types",
+ "serde",
 ]
 
 [[package]]

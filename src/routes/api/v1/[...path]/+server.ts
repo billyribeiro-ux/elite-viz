@@ -31,9 +31,15 @@ async function forward(
 			{ status: 502, headers: { 'content-type': 'application/json' } }
 		);
 	}
+	const outHeaders: Record<string, string> = {
+		'content-type': res.headers.get('content-type') ?? 'application/json'
+	};
+	// Preserve the download filename for CSV/attachment responses (e.g. exports).
+	const disposition = res.headers.get('content-disposition');
+	if (disposition) outHeaders['content-disposition'] = disposition;
 	return new Response(res.body, {
 		status: res.status,
-		headers: { 'content-type': res.headers.get('content-type') ?? 'application/json' }
+		headers: outHeaders
 	});
 }
 

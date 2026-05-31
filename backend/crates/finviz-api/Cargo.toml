@@ -10,7 +10,9 @@ path = "src/main.rs"
 
 [dependencies]
 finviz-types.workspace = true
+finviz-patterns.workspace = true
 finviz-core.workspace = true
+finviz-backtest.workspace = true
 finviz-screener.workspace = true
 finviz-auth.workspace = true
 axum = { workspace = true, features = ["ws"] }

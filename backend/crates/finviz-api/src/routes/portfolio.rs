@@ -14,13 +14,18 @@ pub async fn list_positions(State(state): State<AppState>) -> Json<Vec<Position>
 }
 
 pub async fn summary(State(state): State<AppState>) -> Json<PortfolioSummary> {
-    // Resolve each position's mark to the latest quote, falling back to its
-    // cost basis when no quote exists, then aggregate.
+    Json(compute_summary(&state))
+}
+
+/// Resolve each position's mark to the latest quote (falling back to its cost
+/// basis when no quote exists) and aggregate into a valued summary. Shared by
+/// the JSON summary endpoint and the CSV export.
+pub fn compute_summary(state: &AppState) -> PortfolioSummary {
     let priced = state.positions().into_iter().map(|p| {
         let last_price = state.quote(&p.symbol).map_or(p.avg_price, |q| q.price);
         (p, last_price)
     });
-    Json(summarize(priced))
+    summarize(priced)
 }
 
 /// Pure portfolio valuation: fold `(position, last_price)` pairs into a summary

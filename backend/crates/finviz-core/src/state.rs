@@ -13,10 +13,14 @@ use std::sync::{Arc, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use finviz_types::{
-    Alert, Bar, Fundamentals, Instrument, Interval, Position, ProviderConfig, Quote, QuoteTick,
+    Alert, AnalystRating, Bar, EtfProfile, Fundamentals, InsiderTrade, Instrument, Interval,
+    MarketAsset, NewsItem, OptionChain, Position, ProviderConfig, Quote, QuoteTick, SavedScreen,
     ScreenerRow, User, Watchlist,
 };
 
+use crate::boards;
+use crate::derivatives;
+use crate::news;
 use crate::seed::{self, ScreenerExtras};
 
 /// Internal user record including the password hash (never serialized out).
@@ -42,6 +46,7 @@ struct Data {
     // Mutable, user-owned collections (persisted to Postgres in a later phase).
     watchlists: RwLock<HashMap<String, Watchlist>>,
     positions: RwLock<HashMap<String, Position>>,
+    saved_screens: RwLock<HashMap<String, SavedScreen>>,
     next_id: AtomicU64,
     // Live market-data provider settings, editable at runtime via the API.
     provider: RwLock<ProviderConfig>,
@@ -49,6 +54,10 @@ struct Data {
     users: RwLock<HashMap<String, UserRecord>>,
     alerts: RwLock<HashMap<String, Alert>>,
     jwt_secret: String,
+    // Fixed anchor for synthetic news/insider/rating timestamps, captured once
+    // at boot. Generated *content* never depends on the wall clock; only the
+    // absolute timestamps are offset backwards from this base.
+    news_base_ts: i64,
 }
 
 impl AppState {
@@ -97,12 +106,14 @@ impl AppState {
                 extras,
                 watchlists: RwLock::new(watchlists),
                 positions: RwLock::new(positions),
+                saved_screens: RwLock::new(HashMap::new()),
                 next_id: AtomicU64::new(1),
                 provider: RwLock::new(ProviderConfig::default()),
                 users: RwLock::new(HashMap::new()),
                 alerts: RwLock::new(HashMap::new()),
                 jwt_secret: std::env::var("JWT_SECRET")
                     .unwrap_or_else(|_| "dev-secret-change-me".to_string()),
+                news_base_ts: now,
             }),
         }
     }
@@ -381,6 +392,79 @@ impl AppState {
         self.inner.watchlists.write().unwrap().remove(id).is_some()
     }
 
+    // ---- Saved screens -----------------------------------------------------
+
+    /// All saved screens, sorted by name.
+    pub fn saved_screens(&self) -> Vec<SavedScreen> {
+        let mut v: Vec<SavedScreen> = self
+            .inner
+            .saved_screens
+            .read()
+            .unwrap()
+            .values()
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.name.cmp(&b.name));
+        v
+    }
+
+    pub fn create_saved_screen(
+        &self,
+        name: String,
+        query: String,
+        sort: Option<String>,
+        order: Option<String>,
+    ) -> SavedScreen {
+        let id = format!("ss-{}", self.inner.next_id.fetch_add(1, Ordering::Relaxed));
+        let screen = SavedScreen {
+            id: id.clone(),
+            name,
+            query,
+            sort,
+            order,
+        };
+        self.inner
+            .saved_screens
+            .write()
+            .unwrap()
+            .insert(id, screen.clone());
+        screen
+    }
+
+    pub fn update_saved_screen(
+        &self,
+        id: &str,
+        name: Option<String>,
+        query: Option<String>,
+        sort: Option<Option<String>>,
+        order: Option<Option<String>>,
+    ) -> Option<SavedScreen> {
+        let mut guard = self.inner.saved_screens.write().unwrap();
+        let screen = guard.get_mut(id)?;
+        if let Some(name) = name {
+            screen.name = name;
+        }
+        if let Some(query) = query {
+            screen.query = query;
+        }
+        if let Some(sort) = sort {
+            screen.sort = sort;
+        }
+        if let Some(order) = order {
+            screen.order = order;
+        }
+        Some(screen.clone())
+    }
+
+    pub fn delete_saved_screen(&self, id: &str) -> bool {
+        self.inner
+            .saved_screens
+            .write()
+            .unwrap()
+            .remove(id)
+            .is_some()
+    }
+
     // ---- Portfolio ---------------------------------------------------------
 
     pub fn positions(&self) -> Vec<Position> {
@@ -417,6 +501,118 @@ impl AppState {
             .unwrap()
             .remove(&symbol.to_ascii_uppercase())
             .is_some()
+    }
+
+    // ---- News / insider / ratings ------------------------------------------
+
+    /// Synthetic news. With `symbol`, returns that ticker's stream; otherwise a
+    /// merged market feed across all instruments. Always newest-first.
+    /// Deterministic: identical output on every call for the same arguments.
+    pub fn news(&self, symbol: Option<&str>, limit: usize) -> Vec<NewsItem> {
+        let base = self.inner.news_base_ts;
+        match symbol {
+            Some(sym) => {
+                let sym = sym.to_ascii_uppercase();
+                let Some(inst) = self.inner.instruments.iter().find(|i| i.symbol == sym) else {
+                    return Vec::new();
+                };
+                let Some(quote) = self.inner.quotes.get(&sym) else {
+                    return Vec::new();
+                };
+                news::news_for_symbol(inst, quote, base, limit)
+            }
+            None => news::market_news(
+                &self.inner.instruments,
+                |s| self.inner.quotes.get(s).cloned(),
+                base,
+                limit,
+            ),
+        }
+    }
+
+    /// Synthetic insider trades for a symbol, newest-first. Empty if unknown.
+    /// Deterministic across calls.
+    pub fn insider_trades(&self, symbol: &str, limit: usize) -> Vec<InsiderTrade> {
+        let sym = symbol.to_ascii_uppercase();
+        match self.inner.quotes.get(&sym) {
+            Some(q) => news::insider_trades(&sym, q, self.inner.news_base_ts, limit),
+            None => Vec::new(),
+        }
+    }
+
+    /// Synthetic analyst ratings for a symbol, newest-first. Empty if unknown.
+    /// Deterministic across calls.
+    pub fn analyst_ratings(&self, symbol: &str, limit: usize) -> Vec<AnalystRating> {
+        let sym = symbol.to_ascii_uppercase();
+        match self.inner.quotes.get(&sym) {
+            Some(q) => news::analyst_ratings(&sym, q, self.inner.news_base_ts, limit),
+            None => Vec::new(),
+        }
+    }
+
+    // ---- Derivatives (options) & ETFs --------------------------------------
+
+    /// Build a deterministic, synthetic option chain for `symbol`.
+    ///
+    /// Returns `None` if the symbol is unknown (no seeded quote). `expiries` and
+    /// `strikes_per_side` are clamped to sane bounds by the generator; the
+    /// resulting `contracts` length is `expiries * strikes_per_side * 2`
+    /// (a call and a put per strike). Pricing is illustrative only.
+    pub fn option_chain(
+        &self,
+        symbol: &str,
+        expiries: usize,
+        strikes_per_side: usize,
+    ) -> Option<OptionChain> {
+        let sym = symbol.to_ascii_uppercase();
+        let inst = self.inner.instruments.iter().find(|i| i.symbol == sym)?;
+        let quote = self.inner.quotes.get(&sym)?;
+        Some(derivatives::option_chain(
+            inst,
+            quote,
+            expiries,
+            strikes_per_side,
+        ))
+    }
+
+    /// Profile for a designated synthetic ETF, or `None` for non-ETF symbols.
+    /// Holdings are drawn from the seed universe and weighted by market cap.
+    pub fn etf_profile(&self, symbol: &str) -> Option<EtfProfile> {
+        derivatives::etf_profile(symbol, &self.inner.instruments, |s| {
+            derivatives::cap_of(self.inner.fundamentals.get(s))
+        })
+    }
+
+    /// All designated synthetic ETF profiles, ascending by symbol.
+    pub fn etfs(&self) -> Vec<EtfProfile> {
+        derivatives::etf_profiles(&self.inner.instruments, |s| {
+            derivatives::cap_of(self.inner.fundamentals.get(s))
+        })
+    }
+
+    /// `true` if `symbol` (case-insensitive) is a designated synthetic ETF.
+    pub fn is_etf(&self, symbol: &str) -> bool {
+        derivatives::is_etf(symbol)
+    }
+
+    // ---- Market boards (futures / forex / crypto) --------------------------
+
+    /// The synthetic **futures** board (equity indices, energy, metals,
+    /// agriculture). Deterministic across calls and boots; prices illustrative.
+    pub fn futures(&self) -> Vec<MarketAsset> {
+        boards::futures()
+    }
+
+    /// The synthetic **forex** board (USD majors plus a few crosses). Each
+    /// `price` is the exchange rate. Deterministic; rates illustrative.
+    pub fn forex(&self) -> Vec<MarketAsset> {
+        boards::forex()
+    }
+
+    /// The synthetic **crypto** board (BTC, ETH, and other major coins, in
+    /// USD). Deterministic across calls and boots; prices illustrative.
+    pub fn crypto(&self) -> Vec<MarketAsset> {
+        boards::crypto()
     }
 
     // ---- Realtime ----------------------------------------------------------

@@ -3,17 +3,26 @@ import { authHeaders } from './token';
 import type {
 	Alert,
 	AlertStatus,
+	AnalystRating,
 	ApiError,
 	AuthResponse,
+	BacktestRequest,
+	BacktestResult,
 	Bar,
 	BBandPoint,
+	EtfProfile,
 	FieldInfo,
 	Fundamentals,
 	GroupBy,
 	GroupRow,
 	IndicatorSeries,
+	InsiderTrade,
 	Instrument,
 	MacdPoint,
+	MarketAsset,
+	NewsItem,
+	OptionChain,
+	Pattern,
 	PortfolioSummary,
 	Position,
 	Preset,
@@ -21,11 +30,15 @@ import type {
 	ProviderTestResult,
 	ProviderView,
 	Quote,
+	RuleSpec,
+	SavedScreen,
 	ScreenRequest,
 	ScreenResponse,
+	SortOrder,
 	User,
 	Watchlist
 } from './types';
+import { browser } from '$app/environment';
 
 type FetchLike = typeof fetch;
 
@@ -58,6 +71,106 @@ export async function getFields(fetchFn: FetchLike = fetch): Promise<FieldInfo[]
 	return json<FieldInfo[]>(await fetchFn('/api/v1/screener/fields'));
 }
 
+// ---- saved screens --------------------------------------------------------
+
+export async function getSavedScreens(fetchFn: FetchLike = fetch): Promise<SavedScreen[]> {
+	return json<SavedScreen[]>(await fetchFn('/api/v1/screener/saved'));
+}
+
+export async function saveScreen(
+	body: { name: string; query: string; sort?: string; order?: SortOrder },
+	fetchFn: FetchLike = fetch
+): Promise<SavedScreen> {
+	return json<SavedScreen>(
+		await fetchFn('/api/v1/screener/saved', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body)
+		})
+	);
+}
+
+export async function deleteSavedScreen(id: string, fetchFn: FetchLike = fetch): Promise<void> {
+	const res = await fetchFn(`/api/v1/screener/saved/${encodeURIComponent(id)}`, {
+		method: 'DELETE'
+	});
+	if (!res.ok) throw new Error(`failed to delete saved screen (${res.status})`);
+}
+
+// ---- CSV export -----------------------------------------------------------
+
+/**
+ * Reads a `Response` as a Blob and triggers a browser download. Filename is
+ * taken from the `Content-Disposition` header when present, else `fallback`.
+ * No-op outside the browser.
+ */
+async function downloadResponse(res: Response, fallback: string): Promise<void> {
+	if (!res.ok) {
+		// The body may be JSON (error) rather than CSV; surface a useful message.
+		const body = await res.text().catch(() => '');
+		let message = `export failed (${res.status})`;
+		try {
+			const parsed = JSON.parse(body) as Partial<ApiError>;
+			if (parsed?.message) message = parsed.message;
+		} catch {
+			/* not JSON — keep default */
+		}
+		throw new Error(message);
+	}
+	const blob = await res.blob();
+	if (!browser) return;
+	const filename = filenameFromDisposition(res.headers.get('content-disposition'), fallback);
+	const url = URL.createObjectURL(blob);
+	try {
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = filename;
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+	} finally {
+		URL.revokeObjectURL(url);
+	}
+}
+
+/** Extracts a filename from a `Content-Disposition` header value. */
+function filenameFromDisposition(header: string | null, fallback: string): string {
+	if (!header) return fallback;
+	// Prefer RFC 5987 `filename*=UTF-8''...`, then plain `filename="..."`.
+	const star = header.match(/filename\*=(?:UTF-8'')?([^;]+)/i);
+	if (star?.[1]) {
+		try {
+			return decodeURIComponent(star[1].replace(/^["']|["']$/g, ''));
+		} catch {
+			/* fall through */
+		}
+	}
+	const plain = header.match(/filename="?([^";]+)"?/i);
+	return plain?.[1] ?? fallback;
+}
+
+export async function exportScreenerCsv(
+	req: ScreenRequest,
+	fetchFn: FetchLike = fetch
+): Promise<void> {
+	const res = await fetchFn('/api/v1/export/screener', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(req)
+	});
+	await downloadResponse(res, 'screener.csv');
+}
+
+export async function exportGroupsCsv(by: GroupBy, fetchFn: FetchLike = fetch): Promise<void> {
+	const res = await fetchFn(`/api/v1/export/groups?by=${encodeURIComponent(by)}`);
+	await downloadResponse(res, `groups-${by}.csv`);
+}
+
+export async function exportPortfolioCsv(fetchFn: FetchLike = fetch): Promise<void> {
+	const res = await fetchFn('/api/v1/export/portfolio');
+	await downloadResponse(res, 'portfolio.csv');
+}
+
 // ---- groups ---------------------------------------------------------------
 
 export async function getGroups(
@@ -67,6 +180,30 @@ export async function getGroups(
 	return json<GroupRow[]>(
 		await fetchFn(`/api/v1/groups?by=${encodeURIComponent(by)}`)
 	);
+}
+
+// ---- markets (futures / forex / crypto) -----------------------------------
+
+/**
+ * Market board helper. Tolerates either a bare `MarketAsset[]` or a
+ * `{ items: MarketAsset[] }` wrapper, so it stays resilient to the backend
+ * shape settling.
+ */
+async function getMarketBoard(path: string, fetchFn: FetchLike): Promise<MarketAsset[]> {
+	const body = await json<{ items?: MarketAsset[] } | MarketAsset[]>(await fetchFn(path));
+	return Array.isArray(body) ? body : (body.items ?? []);
+}
+
+export async function getFutures(fetchFn: FetchLike = fetch): Promise<MarketAsset[]> {
+	return getMarketBoard('/api/v1/futures', fetchFn);
+}
+
+export async function getForex(fetchFn: FetchLike = fetch): Promise<MarketAsset[]> {
+	return getMarketBoard('/api/v1/forex', fetchFn);
+}
+
+export async function getCrypto(fetchFn: FetchLike = fetch): Promise<MarketAsset[]> {
+	return getMarketBoard('/api/v1/crypto', fetchFn);
 }
 
 // ---- market data ----------------------------------------------------------
@@ -150,6 +287,67 @@ export async function getMacd(
 	);
 	const body = await json<{ points?: MacdPoint[] } | MacdPoint[]>(res);
 	return Array.isArray(body) ? body : (body.points ?? []);
+}
+
+// ---- news + quote-detail enrichment ---------------------------------------
+
+/**
+ * Latest news. With no `symbol`, returns the merged market feed; otherwise the
+ * symbol-specific feed. Tolerates either a bare array or a `{ items }` wrapper.
+ */
+export async function getNews(
+	symbol?: string,
+	limit?: number,
+	fetchFn: FetchLike = fetch
+): Promise<NewsItem[]> {
+	const params = new URLSearchParams();
+	if (symbol) params.set('symbol', symbol);
+	if (limit) params.set('limit', String(limit));
+	const qs = params.toString();
+	const body = await json<{ items?: NewsItem[] } | NewsItem[]>(
+		await fetchFn(`/api/v1/news${qs ? `?${qs}` : ''}`)
+	);
+	return Array.isArray(body) ? body : (body.items ?? []);
+}
+
+export async function getInsiderTrades(
+	symbol: string,
+	fetchFn: FetchLike = fetch
+): Promise<InsiderTrade[]> {
+	const body = await json<{ items?: InsiderTrade[] } | InsiderTrade[]>(
+		await fetchFn(`/api/v1/market-data/insider/${encodeURIComponent(symbol)}`)
+	);
+	return Array.isArray(body) ? body : (body.items ?? []);
+}
+
+export async function getAnalystRatings(
+	symbol: string,
+	fetchFn: FetchLike = fetch
+): Promise<AnalystRating[]> {
+	const body = await json<{ items?: AnalystRating[] } | AnalystRating[]>(
+		await fetchFn(`/api/v1/market-data/ratings/${encodeURIComponent(symbol)}`)
+	);
+	return Array.isArray(body) ? body : (body.items ?? []);
+}
+
+// ---- pattern recognition --------------------------------------------------
+
+/**
+ * Detected chart patterns for a symbol. Best-effort: tolerates either a bare
+ * `Pattern[]` or a `{ items: Pattern[] }` wrapper as the backend shape settles.
+ */
+export async function getPatterns(
+	symbol: string,
+	opts: { limit?: number } = {},
+	fetchFn: FetchLike = fetch
+): Promise<Pattern[]> {
+	const params = new URLSearchParams();
+	if (opts.limit) params.set('limit', String(opts.limit));
+	const qs = params.toString();
+	const body = await json<{ items?: Pattern[] } | Pattern[]>(
+		await fetchFn(`/api/v1/patterns/${encodeURIComponent(symbol)}${qs ? `?${qs}` : ''}`)
+	);
+	return Array.isArray(body) ? body : (body.items ?? []);
 }
 
 // ---- watchlists -----------------------------------------------------------
@@ -276,4 +474,57 @@ export async function createAlert(
 export async function deleteAlert(id: string, fetchFn: FetchLike = fetch): Promise<void> {
 	const res = await fetchFn(`/api/v1/alerts/${encodeURIComponent(id)}`, { method: 'DELETE' });
 	if (!res.ok) throw new Error(`failed to delete alert (${res.status})`);
+}
+
+// ---- backtesting ----------------------------------------------------------
+
+/** Catalog of available entry-rule kinds and their params. */
+export async function getBacktestRules(fetchFn: FetchLike = fetch): Promise<RuleSpec[]> {
+	const body = await json<RuleSpec[] | { rules?: RuleSpec[] }>(
+		await fetchFn('/api/v1/backtest/rules')
+	);
+	return Array.isArray(body) ? body : (body.rules ?? []);
+}
+
+export async function runBacktest(
+	req: BacktestRequest,
+	fetchFn: FetchLike = fetch
+): Promise<BacktestResult> {
+	return json<BacktestResult>(
+		await fetchFn('/api/v1/backtest', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(req)
+		})
+	);
+}
+
+// ---- options chain --------------------------------------------------------
+
+/** Options chain for a symbol; optionally filter by expiries/strikes. */
+export async function getOptionChain(
+	symbol: string,
+	opts: { expiries?: string[]; strikes?: number[] } = {},
+	fetchFn: FetchLike = fetch
+): Promise<OptionChain> {
+	const params = new URLSearchParams();
+	if (opts.expiries?.length) params.set('expiries', opts.expiries.join(','));
+	if (opts.strikes?.length) params.set('strikes', opts.strikes.join(','));
+	const qs = params.toString();
+	return json<OptionChain>(
+		await fetchFn(`/api/v1/options/${encodeURIComponent(symbol)}${qs ? `?${qs}` : ''}`)
+	);
+}
+
+// ---- ETFs -----------------------------------------------------------------
+
+/** List of ETF profiles. Tolerates a bare array or `{ items }` wrapper. */
+export async function getEtfs(fetchFn: FetchLike = fetch): Promise<EtfProfile[]> {
+	const body = await json<{ items?: EtfProfile[] } | EtfProfile[]>(await fetchFn('/api/v1/etf'));
+	return Array.isArray(body) ? body : (body.items ?? []);
+}
+
+/** A single ETF profile by symbol (404 if not an ETF). */
+export async function getEtf(symbol: string, fetchFn: FetchLike = fetch): Promise<EtfProfile> {
+	return json<EtfProfile>(await fetchFn(`/api/v1/etf/${encodeURIComponent(symbol)}`));
 }

@@ -22,7 +22,7 @@ pub enum GroupKey {
 }
 
 impl GroupKey {
-    fn parse(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s {
             "sector" => Some(GroupKey::Sector),
             "industry" => Some(GroupKey::Industry),
@@ -67,7 +67,7 @@ pub async fn list(
 /// Bucket `rows` by `key`, computing per-group counts, averages, and totals.
 /// Groups are returned sorted by `total_market_cap` descending. Float outputs
 /// are rounded to two decimal places.
-fn aggregate(rows: &[ScreenerRow], key: GroupKey) -> Vec<GroupRow> {
+pub fn aggregate(rows: &[ScreenerRow], key: GroupKey) -> Vec<GroupRow> {
     use std::collections::HashMap;
 
     #[derive(Default)]

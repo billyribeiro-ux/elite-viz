@@ -1,8 +1,12 @@
 <script lang="ts">
+	import { exportPortfolioCsv } from '$lib/api';
 	import { price, trend } from '$lib/format';
 
 	let { data } = $props();
 	const s = $derived(data.summary);
+
+	let exporting = $state(false);
+	let error = $state<string | null>(null);
 
 	function money(n: number): string {
 		return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -10,11 +14,34 @@
 	function signed(n: number): string {
 		return `${n >= 0 ? '+' : '-'}${money(Math.abs(n))}`;
 	}
+
+	async function doExport() {
+		exporting = true;
+		error = null;
+		try {
+			await exportPortfolioCsv();
+		} catch (e) {
+			error = e instanceof Error ? e.message : String(e);
+		} finally {
+			exporting = false;
+		}
+	}
 </script>
 
 <svelte:head>
 	<title>Portfolio · FINVIZ Elite+</title>
 </svelte:head>
+
+<header class="head">
+	<h2>Portfolio</h2>
+	<button type="button" class="export" onclick={doExport} disabled={exporting}>
+		{exporting ? 'Exporting…' : '⭳ Export CSV'}
+	</button>
+</header>
+
+{#if error}
+	<p class="error" role="alert">⚠ {error}</p>
+{/if}
 
 <div class="cards">
 	<div class="card">
@@ -67,6 +94,44 @@
 </div>
 
 <style>
+	.head {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 1rem;
+		margin-bottom: 1.25rem;
+	}
+	.head h2 {
+		margin: 0;
+		font-size: 1.4rem;
+	}
+	.export {
+		background: var(--panel-2);
+		color: var(--text);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 0.4rem 0.9rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.export:hover:not(:disabled) {
+		border-color: var(--accent);
+		color: var(--accent);
+	}
+	.export:disabled {
+		opacity: 0.6;
+		cursor: progress;
+	}
+	.error {
+		background: rgba(248, 114, 114, 0.12);
+		border: 1px solid var(--danger);
+		color: var(--danger);
+		border-radius: var(--radius);
+		padding: 0.7rem 0.9rem;
+		margin-bottom: 1rem;
+	}
 	.cards {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

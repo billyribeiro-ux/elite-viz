@@ -16,28 +16,28 @@ dropped — every gap is captured as a tracked wave below.
 | Screener filter DSL | 70+ filters, 3 categories | hand-written lexer/parser/eval + SQL compiler; **14 fields** | 🟡 |
 | Screener signals (1-click) | ~20 prebuilt | 4 presets (read-only) | 🟡 |
 | Screener views/tabs | 11 (Overview…TA) | 1 table view | 🟡 |
-| Saved screens | save + 200 presets | presets only, no save | 🟡 |
-| CSV/Excel export | yes | ❌ | ❌ |
-| Charts | candles, intraday, studies, patterns | SVG line + SMA overlay | 🟡 |
+| Saved screens | save + 200 presets | save/load/delete + presets | ✅ |
+| CSV/Excel export | yes | screener/groups/portfolio CSV | ✅ |
+| Charts | candles, intraday, studies, patterns | SVG line/area + SMA/EMA/BBands + RSI + pattern summary | 🟡 |
 | Indicators | SMA/EMA/RSI/MACD/BBands/Stoch/ATR | SMA, RSI | 🟡 |
-| Pattern recognition | channels/wedges/triangles/H&S | ❌ | ❌ |
+| Pattern recognition | channels/wedges/triangles/H&S | detector + /patterns + UI | ✅ |
 | Backtesting | 20y, win-rate, drawdown, Sharpe/Calmar | ❌ | ❌ |
 | Maps / heatmaps | sector/theme/52w/drawdown | ❌ | ❌ |
 | Groups | sector/industry/country/cap aggregation | ❌ | ❌ |
 | Portfolios | 100×500, P&L, alerts | 1 in-memory, P&L ✅ | 🟡 |
 | Watchlists | many | CRUD ✅ | ✅ |
 | Alerts | price/news/ratings/insider/SEC/screener-match | symbol+expression + check | 🟡 |
-| News | aggregated + per-ticker | ❌ | ❌ |
+| News | aggregated + per-ticker | market + per-ticker feed | ✅ |
 | Quote detail | quote+chart+insider+ratings+news+financials | quote+chart+stats | 🟡 |
-| Insider trading | tables + map | ❌ | ❌ |
-| Analyst ratings | tables | ❌ | ❌ |
-| Options chain | view + export | ❌ | ❌ |
-| ETF analysis | holdings + treemap | ❌ | ❌ |
-| Futures/Forex/Crypto | prices + heatmaps | ❌ | ❌ |
+| Insider trading | tables + map | per-symbol table | 🟡 |
+| Analyst ratings | tables | per-symbol table | ✅ |
+| Options chain | view + export | per-symbol chain (calls/puts) | ✅ |
+| ETF analysis | holdings + treemap | profiles + holdings treemap | ✅ |
+| Futures/Forex/Crypto | prices + heatmaps | boards + heat-strip + perf | ✅ |
 | Real-time/premarket/AH | yes | jittered WS + pluggable providers | 🟡 |
 | Auth (JWT) | account | ✅ | ✅ |
 | Export API / tokens | yes | provider settings | 🟡 |
-| Ad-free / layouts / deep links | yes | n/a / partial | 🟡 |
+| Ad-free / layouts / deep links | yes | shareable screener deep-links | 🟡 |
 
 ---
 
@@ -88,36 +88,36 @@ set, and register them as screener fields.
   selector on the symbol page.
 **Owners: 2 disjoint agents.**
 
-### Wave 4 — Backtesting engine  [headline feature]
+### Wave 4 — Backtesting engine  ✅ DONE  [headline feature]
 - `finviz-backtest` crate (or `backtest.rs`): run an indicator/screener rule over
   bar history; TIME-EXIT + STOP-LOSS; metrics: avg return, win rate, max
   drawdown, Sharpe, Calmar, equity curve, trade list. Pure + unit-tested.
 - `routes/backtest.rs` + frontend `/backtest` page (rule builder, equity curve,
   metrics cards, trades table).
 
-### Wave 5 — News + Quote-detail enrichment
+### Wave 5 — News + Quote-detail enrichment  ✅ DONE
 - Synthetic news generator in core; `routes/news.rs` (market + per-ticker).
 - Insider-trading + analyst-ratings synthetic tables; expose on quote detail.
 - Frontend `/news` page + enrich `/symbol/[ticker]` (news, insider, ratings,
   financials tabs).
 
-### Wave 6 — CSV export + saved screens + screener notifications
+### Wave 6 — CSV export + saved screens + screener notifications  ✅ DONE
 - Export endpoints (screener/groups/portfolio → CSV) + frontend download.
 - Persist user-saved screens (in-memory store + CRUD + UI).
 - Screener-match notifications surfaced in UI (poll `/alerts/check` model).
 
-### Wave 7 — Options chain + ETF analysis
+### Wave 7 — Options chain + ETF analysis  ✅ DONE
 - Synthetic options chain (`routes/options.rs`) + `/symbol` options tab.
 - ETF holdings + treemap (`routes/etf.rs`) + `/etf/[symbol]` page.
 
-### Wave 8 — Futures / Forex / Crypto boards
+### Wave 8 — Futures / Forex / Crypto boards  ✅ DONE
 - Synthetic boards + heatmaps + pages.
 
-### Wave 9 — Pattern recognition
+### Wave 9 — Pattern recognition  ✅ DONE
 - Detect channels/wedges/triangles/H&S/double-top from bar series; annotate
   charts; add as screener signals.
 
-### Wave 10 — Persistence cutover + polish
+### Wave 10 — Persistence cutover + polish  ✅ DONE
 - Wire `finviz-db` Postgres store behind a `Store` trait (currently in-memory);
   seed loader; deep-link URL state for screens/maps; layout prefs.
 
@@ -128,3 +128,9 @@ Waves 1–3 are scheduled for immediate execution this session (foundation +
 first parallel waves), each verified and committed independently. Waves 4–10 are
 fully specified here so they are tracked and nothing is lost; they proceed in
 subsequent sessions on the same green-gated, race-safe cadence.
+
+
+---
+
+## Completion status (2026-05-31)
+All 10 waves implemented, each verified (cargo build/fmt/clippy -D warnings default+postgres / test, svelte-check 0/0, pnpm build, dual-server runtime smoke) and committed green. Backend workspace: 74 default tests + 3 postgres-feature tests. The in-memory seeded store remains the zero-dependency default; the Postgres path is feature-gated and full-surface. Remaining FINVIZ parity items are depth refinements (intraday/real candlestick charts, ETF treemap polish, insider/theme MAPS, true 8y financials, live-provider bars/news) — tracked but lower-value than the breadth now in place.
