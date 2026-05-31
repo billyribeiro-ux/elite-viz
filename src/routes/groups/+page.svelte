@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { getGroups } from '$lib/api';
+	import { exportGroupsCsv, getGroups } from '$lib/api';
 	import { compactNumber, marketCap, optional, percent, trend } from '$lib/format';
 	import type { GroupBy, GroupRow, SortOrder } from '$lib/types';
 
@@ -12,6 +12,7 @@
 	let error = $state<string | null>(untrack(() => data.error));
 	let sort = $state<keyof GroupRow>('total_market_cap');
 	let order = $state<SortOrder>('desc');
+	let exporting = $state(false);
 	let metric = $state<'avg_perf_week' | 'avg_perf_month' | 'avg_perf_year' | 'total_market_cap'>(
 		'total_market_cap'
 	);
@@ -90,6 +91,18 @@
 	function isPerf(): boolean {
 		return metric !== 'total_market_cap';
 	}
+
+	async function doExport() {
+		exporting = true;
+		error = null;
+		try {
+			await exportGroupsCsv(by);
+		} catch (e) {
+			error = e instanceof Error ? e.message : String(e);
+		} finally {
+			exporting = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -122,6 +135,9 @@
 				{/each}
 			</select>
 		</label>
+		<button type="button" class="export" onclick={doExport} disabled={exporting || loading}>
+			{exporting ? 'Exporting…' : '⭳ Export CSV'}
+		</button>
 	</div>
 </header>
 
@@ -206,6 +222,25 @@
 		display: flex;
 		gap: 1rem;
 		flex-wrap: wrap;
+		align-items: flex-end;
+	}
+	.export {
+		background: var(--panel-2);
+		color: var(--text);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 0.4rem 0.9rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.export:hover:not(:disabled) {
+		border-color: var(--accent);
+		color: var(--accent);
+	}
+	.export:disabled {
+		opacity: 0.6;
+		cursor: progress;
 	}
 	.controls label {
 		display: flex;

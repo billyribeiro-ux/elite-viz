@@ -16,8 +16,8 @@ dropped — every gap is captured as a tracked wave below.
 | Screener filter DSL | 70+ filters, 3 categories | hand-written lexer/parser/eval + SQL compiler; **14 fields** | 🟡 |
 | Screener signals (1-click) | ~20 prebuilt | 4 presets (read-only) | 🟡 |
 | Screener views/tabs | 11 (Overview…TA) | 1 table view | 🟡 |
-| Saved screens | save + 200 presets | presets only, no save | 🟡 |
-| CSV/Excel export | yes | ❌ | ❌ |
+| Saved screens | save + 200 presets | save/load/delete + presets | ✅ |
+| CSV/Excel export | yes | screener/groups/portfolio CSV | ✅ |
 | Charts | candles, intraday, studies, patterns | SVG line + SMA overlay | 🟡 |
 | Indicators | SMA/EMA/RSI/MACD/BBands/Stoch/ATR | SMA, RSI | 🟡 |
 | Pattern recognition | channels/wedges/triangles/H&S | ❌ | ❌ |
@@ -101,7 +101,7 @@ set, and register them as screener fields.
 - Frontend `/news` page + enrich `/symbol/[ticker]` (news, insider, ratings,
   financials tabs).
 
-### Wave 6 — CSV export + saved screens + screener notifications
+### Wave 6 — CSV export + saved screens + screener notifications  ✅ DONE
 - Export endpoints (screener/groups/portfolio → CSV) + frontend download.
 - Persist user-saved screens (in-memory store + CRUD + UI).
 - Screener-match notifications surfaced in UI (poll `/alerts/check` model).

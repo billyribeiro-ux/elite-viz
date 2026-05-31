@@ -3,17 +3,19 @@
 pub mod alerts;
 pub mod auth;
 pub mod backtest;
+pub mod export;
 pub mod groups;
 pub mod indicators;
 pub mod market_data;
 pub mod news;
 pub mod portfolio;
+pub mod saved_screens;
 pub mod screener;
 pub mod settings;
 pub mod watchlists;
 pub mod ws;
 
-use axum::routing::{delete, get, post};
+use axum::routing::{delete, get, post, put};
 use axum::Router;
 use finviz_core::AppState;
 
@@ -36,6 +38,15 @@ pub fn api_router() -> Router<AppState> {
         .route("/screener/run", post(screener::run))
         .route("/screener/fields", get(screener::fields))
         .route("/screener/presets", get(screener::presets))
+        // saved screens
+        .route(
+            "/screener/saved",
+            get(saved_screens::list).post(saved_screens::create),
+        )
+        .route(
+            "/screener/saved/{id}",
+            put(saved_screens::update).delete(saved_screens::delete),
+        )
         // indicators
         .route("/indicators/sma/{symbol}", get(indicators::sma))
         .route("/indicators/rsi/{symbol}", get(indicators::rsi))
@@ -48,6 +59,10 @@ pub fn api_router() -> Router<AppState> {
         .route("/backtest/rules", get(backtest::rules))
         // groups
         .route("/groups", get(groups::list))
+        // CSV export
+        .route("/export/screener", post(export::screener))
+        .route("/export/groups", get(export::groups))
+        .route("/export/portfolio", get(export::portfolio))
         // watchlists
         .route(
             "/watchlists",

@@ -85,6 +85,15 @@ export interface ApiError {
 	message: string;
 }
 
+/** A saved screener query from `/api/v1/screener/saved`. */
+export interface SavedScreen {
+	id: string;
+	name: string;
+	query: string;
+	sort?: string;
+	order?: SortOrder;
+}
+
 export interface Quote {
 	symbol: string;
 	price: number;

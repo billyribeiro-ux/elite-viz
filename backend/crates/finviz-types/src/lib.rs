@@ -200,6 +200,21 @@ pub struct Watchlist {
     pub symbols: Vec<Symbol>,
 }
 
+/// A user-saved screener query for quick re-running.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SavedScreen {
+    pub id: String,
+    pub name: String,
+    /// Filter DSL, e.g. `price > 100 and pe < 30`.
+    pub query: String,
+    /// Optional field to sort by.
+    #[serde(default)]
+    pub sort: Option<String>,
+    /// Optional sort order, `"asc"` or `"desc"`.
+    #[serde(default)]
+    pub order: Option<String>,
+}
+
 /// A single open position in a portfolio.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Position {

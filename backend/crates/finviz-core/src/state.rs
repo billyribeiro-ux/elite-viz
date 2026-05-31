@@ -14,7 +14,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use finviz_types::{
     Alert, AnalystRating, Bar, Fundamentals, InsiderTrade, Instrument, Interval, NewsItem,
-    Position, ProviderConfig, Quote, QuoteTick, ScreenerRow, User, Watchlist,
+    Position, ProviderConfig, Quote, QuoteTick, SavedScreen, ScreenerRow, User, Watchlist,
 };
 
 use crate::news;
@@ -43,6 +43,7 @@ struct Data {
     // Mutable, user-owned collections (persisted to Postgres in a later phase).
     watchlists: RwLock<HashMap<String, Watchlist>>,
     positions: RwLock<HashMap<String, Position>>,
+    saved_screens: RwLock<HashMap<String, SavedScreen>>,
     next_id: AtomicU64,
     // Live market-data provider settings, editable at runtime via the API.
     provider: RwLock<ProviderConfig>,
@@ -102,6 +103,7 @@ impl AppState {
                 extras,
                 watchlists: RwLock::new(watchlists),
                 positions: RwLock::new(positions),
+                saved_screens: RwLock::new(HashMap::new()),
                 next_id: AtomicU64::new(1),
                 provider: RwLock::new(ProviderConfig::default()),
                 users: RwLock::new(HashMap::new()),
@@ -385,6 +387,79 @@ impl AppState {
 
     pub fn delete_watchlist(&self, id: &str) -> bool {
         self.inner.watchlists.write().unwrap().remove(id).is_some()
+    }
+
+    // ---- Saved screens -----------------------------------------------------
+
+    /// All saved screens, sorted by name.
+    pub fn saved_screens(&self) -> Vec<SavedScreen> {
+        let mut v: Vec<SavedScreen> = self
+            .inner
+            .saved_screens
+            .read()
+            .unwrap()
+            .values()
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.name.cmp(&b.name));
+        v
+    }
+
+    pub fn create_saved_screen(
+        &self,
+        name: String,
+        query: String,
+        sort: Option<String>,
+        order: Option<String>,
+    ) -> SavedScreen {
+        let id = format!("ss-{}", self.inner.next_id.fetch_add(1, Ordering::Relaxed));
+        let screen = SavedScreen {
+            id: id.clone(),
+            name,
+            query,
+            sort,
+            order,
+        };
+        self.inner
+            .saved_screens
+            .write()
+            .unwrap()
+            .insert(id, screen.clone());
+        screen
+    }
+
+    pub fn update_saved_screen(
+        &self,
+        id: &str,
+        name: Option<String>,
+        query: Option<String>,
+        sort: Option<Option<String>>,
+        order: Option<Option<String>>,
+    ) -> Option<SavedScreen> {
+        let mut guard = self.inner.saved_screens.write().unwrap();
+        let screen = guard.get_mut(id)?;
+        if let Some(name) = name {
+            screen.name = name;
+        }
+        if let Some(query) = query {
+            screen.query = query;
+        }
+        if let Some(sort) = sort {
+            screen.sort = sort;
+        }
+        if let Some(order) = order {
+            screen.order = order;
+        }
+        Some(screen.clone())
+    }
+
+    pub fn delete_saved_screen(&self, id: &str) -> bool {
+        self.inner
+            .saved_screens
+            .write()
+            .unwrap()
+            .remove(id)
+            .is_some()
     }
 
     // ---- Portfolio ---------------------------------------------------------

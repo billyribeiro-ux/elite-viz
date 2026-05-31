@@ -27,11 +27,14 @@ import type {
 	ProviderView,
 	Quote,
 	RuleSpec,
+	SavedScreen,
 	ScreenRequest,
 	ScreenResponse,
+	SortOrder,
 	User,
 	Watchlist
 } from './types';
+import { browser } from '$app/environment';
 
 type FetchLike = typeof fetch;
 
@@ -62,6 +65,106 @@ export async function getPresets(fetchFn: FetchLike = fetch): Promise<Preset[]> 
 
 export async function getFields(fetchFn: FetchLike = fetch): Promise<FieldInfo[]> {
 	return json<FieldInfo[]>(await fetchFn('/api/v1/screener/fields'));
+}
+
+// ---- saved screens --------------------------------------------------------
+
+export async function getSavedScreens(fetchFn: FetchLike = fetch): Promise<SavedScreen[]> {
+	return json<SavedScreen[]>(await fetchFn('/api/v1/screener/saved'));
+}
+
+export async function saveScreen(
+	body: { name: string; query: string; sort?: string; order?: SortOrder },
+	fetchFn: FetchLike = fetch
+): Promise<SavedScreen> {
+	return json<SavedScreen>(
+		await fetchFn('/api/v1/screener/saved', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body)
+		})
+	);
+}
+
+export async function deleteSavedScreen(id: string, fetchFn: FetchLike = fetch): Promise<void> {
+	const res = await fetchFn(`/api/v1/screener/saved/${encodeURIComponent(id)}`, {
+		method: 'DELETE'
+	});
+	if (!res.ok) throw new Error(`failed to delete saved screen (${res.status})`);
+}
+
+// ---- CSV export -----------------------------------------------------------
+
+/**
+ * Reads a `Response` as a Blob and triggers a browser download. Filename is
+ * taken from the `Content-Disposition` header when present, else `fallback`.
+ * No-op outside the browser.
+ */
+async function downloadResponse(res: Response, fallback: string): Promise<void> {
+	if (!res.ok) {
+		// The body may be JSON (error) rather than CSV; surface a useful message.
+		const body = await res.text().catch(() => '');
+		let message = `export failed (${res.status})`;
+		try {
+			const parsed = JSON.parse(body) as Partial<ApiError>;
+			if (parsed?.message) message = parsed.message;
+		} catch {
+			/* not JSON — keep default */
+		}
+		throw new Error(message);
+	}
+	const blob = await res.blob();
+	if (!browser) return;
+	const filename = filenameFromDisposition(res.headers.get('content-disposition'), fallback);
+	const url = URL.createObjectURL(blob);
+	try {
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = filename;
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+	} finally {
+		URL.revokeObjectURL(url);
+	}
+}
+
+/** Extracts a filename from a `Content-Disposition` header value. */
+function filenameFromDisposition(header: string | null, fallback: string): string {
+	if (!header) return fallback;
+	// Prefer RFC 5987 `filename*=UTF-8''...`, then plain `filename="..."`.
+	const star = header.match(/filename\*=(?:UTF-8'')?([^;]+)/i);
+	if (star?.[1]) {
+		try {
+			return decodeURIComponent(star[1].replace(/^["']|["']$/g, ''));
+		} catch {
+			/* fall through */
+		}
+	}
+	const plain = header.match(/filename="?([^";]+)"?/i);
+	return plain?.[1] ?? fallback;
+}
+
+export async function exportScreenerCsv(
+	req: ScreenRequest,
+	fetchFn: FetchLike = fetch
+): Promise<void> {
+	const res = await fetchFn('/api/v1/export/screener', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(req)
+	});
+	await downloadResponse(res, 'screener.csv');
+}
+
+export async function exportGroupsCsv(by: GroupBy, fetchFn: FetchLike = fetch): Promise<void> {
+	const res = await fetchFn(`/api/v1/export/groups?by=${encodeURIComponent(by)}`);
+	await downloadResponse(res, `groups-${by}.csv`);
+}
+
+export async function exportPortfolioCsv(fetchFn: FetchLike = fetch): Promise<void> {
+	const res = await fetchFn('/api/v1/export/portfolio');
+	await downloadResponse(res, 'portfolio.csv');
 }
 
 // ---- groups ---------------------------------------------------------------
