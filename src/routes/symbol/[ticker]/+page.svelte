@@ -11,7 +11,7 @@
 		shortDate,
 		trend
 	} from '$lib/format';
-	import type { IndicatorPoint, QuoteTick } from '$lib/types';
+	import type { IndicatorPoint, OptionContract, QuoteTick } from '$lib/types';
 
 	let { data } = $props();
 
@@ -78,23 +78,90 @@
 	]);
 
 	// Enrichment tabs — only surface a tab when it has data.
-	type Tab = 'news' | 'insider' | 'ratings';
+	type Tab = 'news' | 'insider' | 'ratings' | 'options';
 	const news = $derived(data.news ?? []);
 	const insider = $derived(data.insider ?? []);
 	const ratings = $derived(data.ratings ?? []);
+	const chain = $derived(data.options ?? null);
 	const hasNews = $derived(news.length > 0);
 	const hasInsider = $derived(insider.length > 0);
 	const hasRatings = $derived(ratings.length > 0);
+	const hasOptions = $derived((chain?.expiries?.length ?? 0) > 0 && (chain?.contracts?.length ?? 0) > 0);
 
 	const tabs = $derived(
 		[
 			{ value: 'news' as Tab, label: 'News', show: hasNews },
 			{ value: 'insider' as Tab, label: 'Insider', show: hasInsider },
-			{ value: 'ratings' as Tab, label: 'Ratings', show: hasRatings }
+			{ value: 'ratings' as Tab, label: 'Ratings', show: hasRatings },
+			{ value: 'options' as Tab, label: 'Options', show: hasOptions }
 		].filter((t) => t.show)
 	);
 
 	let selectedTab = $state<Tab>('news');
+
+	// ---- options chain --------------------------------------------------------
+	let selectedExpiry = $state<string>('');
+
+	// Default the expiry to the first available; reset when it's no longer valid.
+	const expiry = $derived(
+		chain?.expiries?.includes(selectedExpiry) ? selectedExpiry : (chain?.expiries?.[0] ?? '')
+	);
+
+	const underlying = $derived(chain?.underlying_price ?? livePrice);
+
+	type StrikeRow = {
+		strike: number;
+		call: OptionContract | null;
+		put: OptionContract | null;
+		nearMoney: boolean;
+	};
+
+	// Build a per-strike row for the selected expiry, pairing calls and puts.
+	const strikeRows = $derived.by<StrikeRow[]>(() => {
+		if (!chain) return [];
+		const rows = new Map<number, StrikeRow>();
+		for (const c of chain.contracts) {
+			if (c.expiry !== expiry) continue;
+			let row = rows.get(c.strike);
+			if (!row) {
+				row = { strike: c.strike, call: null, put: null, nearMoney: false };
+				rows.set(c.strike, row);
+			}
+			if (c.kind === 'call') row.call = c;
+			else if (c.kind === 'put') row.put = c;
+		}
+		const list = [...rows.values()].sort((a, b) => a.strike - b.strike);
+		// Mark the single strike closest to the underlying as near-the-money.
+		if (list.length && Number.isFinite(underlying)) {
+			let bestIdx = 0;
+			let bestDiff = Infinity;
+			for (let i = 0; i < list.length; i++) {
+				const diff = Math.abs(list[i].strike - underlying);
+				if (diff < bestDiff) {
+					bestDiff = diff;
+					bestIdx = i;
+				}
+			}
+			list[bestIdx].nearMoney = true;
+		}
+		return list;
+	});
+
+	function ivPct(v: number): string {
+		return Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : '—';
+	}
+
+	function num(v: number | null | undefined): string {
+		return v != null && Number.isFinite(v) ? compactNumber(v) : '—';
+	}
+
+	function px(v: number | null | undefined): string {
+		return v != null && Number.isFinite(v) ? price(v) : '—';
+	}
+
+	function deltaFmt(v: number | null | undefined): string {
+		return v != null && Number.isFinite(v) ? v.toFixed(2) : '—';
+	}
 
 	// Keep the selection valid as availability changes.
 	const activeTab = $derived(
@@ -282,6 +349,70 @@
 					</tbody>
 				</table>
 			</div>
+		{:else if activeTab === 'options' && chain}
+			<div class="opt-controls">
+				<label>
+					Expiry
+					<select value={expiry} onchange={(e) => (selectedExpiry = e.currentTarget.value)}>
+						{#each chain.expiries as ex (ex)}
+							<option value={ex}>{shortDate(Date.parse(ex) / 1000)}</option>
+						{/each}
+					</select>
+				</label>
+				<span class="opt-underlying">Underlying {px(underlying)}</span>
+			</div>
+			{#if strikeRows.length}
+				<div class="table-wrap">
+					<table class="opt-table">
+						<thead>
+							<tr>
+								<th colspan="7" class="side-head call-head">Calls</th>
+								<th class="strike-head" rowspan="2">Strike</th>
+								<th colspan="7" class="side-head put-head">Puts</th>
+							</tr>
+							<tr>
+								<th class="num">Bid</th>
+								<th class="num">Ask</th>
+								<th class="num">Last</th>
+								<th class="num">Vol</th>
+								<th class="num">OI</th>
+								<th class="num">IV</th>
+								<th class="num">Δ</th>
+								<th class="num">Bid</th>
+								<th class="num">Ask</th>
+								<th class="num">Last</th>
+								<th class="num">Vol</th>
+								<th class="num">OI</th>
+								<th class="num">IV</th>
+								<th class="num">Δ</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each strikeRows as row (row.strike)}
+								<tr class:atm={row.nearMoney}>
+									<td class="num call-cell">{px(row.call?.bid)}</td>
+									<td class="num call-cell">{px(row.call?.ask)}</td>
+									<td class="num call-cell">{px(row.call?.last)}</td>
+									<td class="num call-cell">{num(row.call?.volume)}</td>
+									<td class="num call-cell">{num(row.call?.open_interest)}</td>
+									<td class="num call-cell">{row.call ? ivPct(row.call.implied_vol) : '—'}</td>
+									<td class="num call-cell">{deltaFmt(row.call?.delta)}</td>
+									<td class="num strike-cell">{px(row.strike)}</td>
+									<td class="num put-cell">{px(row.put?.bid)}</td>
+									<td class="num put-cell">{px(row.put?.ask)}</td>
+									<td class="num put-cell">{px(row.put?.last)}</td>
+									<td class="num put-cell">{num(row.put?.volume)}</td>
+									<td class="num put-cell">{num(row.put?.open_interest)}</td>
+									<td class="num put-cell">{row.put ? ivPct(row.put.implied_vol) : '—'}</td>
+									<td class="num put-cell">{deltaFmt(row.put?.delta)}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{:else}
+				<p class="empty">No contracts for this expiry.</p>
+			{/if}
 		{/if}
 	</section>
 {/if}
@@ -531,5 +662,72 @@
 	td.sell {
 		color: var(--danger);
 		font-weight: 600;
+	}
+	.opt-controls {
+		display: flex;
+		align-items: flex-end;
+		gap: 1.25rem;
+		margin-bottom: 0.9rem;
+		flex-wrap: wrap;
+	}
+	.opt-controls label {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		font-size: 0.75rem;
+		color: var(--muted);
+	}
+	.opt-controls select {
+		background: var(--panel);
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: var(--radius);
+		padding: 0.4rem 0.6rem;
+		font-size: 0.85rem;
+	}
+	.opt-underlying {
+		font-size: 0.8rem;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+	.opt-table {
+		font-size: 0.78rem;
+	}
+	.opt-table th,
+	.opt-table td {
+		padding: 0.35rem 0.55rem;
+	}
+	.opt-table .side-head {
+		text-align: center;
+		font-size: 0.7rem;
+		letter-spacing: 0.6px;
+	}
+	.opt-table .call-head {
+		color: var(--accent-2);
+	}
+	.opt-table .put-head {
+		color: var(--danger);
+	}
+	.opt-table .strike-head {
+		text-align: center;
+		background: var(--panel-2);
+	}
+	.opt-table .strike-cell {
+		text-align: center;
+		font-weight: 700;
+		background: var(--panel-2);
+		font-family: var(--mono);
+	}
+	.opt-table tr.atm {
+		background: rgba(45, 211, 153, 0.1);
+	}
+	.opt-table tr.atm .strike-cell {
+		background: rgba(45, 211, 153, 0.25);
+		color: var(--accent-2);
+	}
+	.empty {
+		text-align: center;
+		color: var(--muted);
+		padding: 1.5rem;
 	}
 </style>

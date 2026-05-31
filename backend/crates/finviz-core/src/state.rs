@@ -13,10 +13,12 @@ use std::sync::{Arc, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use finviz_types::{
-    Alert, AnalystRating, Bar, Fundamentals, InsiderTrade, Instrument, Interval, NewsItem,
-    Position, ProviderConfig, Quote, QuoteTick, SavedScreen, ScreenerRow, User, Watchlist,
+    Alert, AnalystRating, Bar, EtfProfile, Fundamentals, InsiderTrade, Instrument, Interval,
+    NewsItem, OptionChain, Position, ProviderConfig, Quote, QuoteTick, SavedScreen, ScreenerRow,
+    User, Watchlist,
 };
 
+use crate::derivatives;
 use crate::news;
 use crate::seed::{self, ScreenerExtras};
 
@@ -545,6 +547,51 @@ impl AppState {
             Some(q) => news::analyst_ratings(&sym, q, self.inner.news_base_ts, limit),
             None => Vec::new(),
         }
+    }
+
+    // ---- Derivatives (options) & ETFs --------------------------------------
+
+    /// Build a deterministic, synthetic option chain for `symbol`.
+    ///
+    /// Returns `None` if the symbol is unknown (no seeded quote). `expiries` and
+    /// `strikes_per_side` are clamped to sane bounds by the generator; the
+    /// resulting `contracts` length is `expiries * strikes_per_side * 2`
+    /// (a call and a put per strike). Pricing is illustrative only.
+    pub fn option_chain(
+        &self,
+        symbol: &str,
+        expiries: usize,
+        strikes_per_side: usize,
+    ) -> Option<OptionChain> {
+        let sym = symbol.to_ascii_uppercase();
+        let inst = self.inner.instruments.iter().find(|i| i.symbol == sym)?;
+        let quote = self.inner.quotes.get(&sym)?;
+        Some(derivatives::option_chain(
+            inst,
+            quote,
+            expiries,
+            strikes_per_side,
+        ))
+    }
+
+    /// Profile for a designated synthetic ETF, or `None` for non-ETF symbols.
+    /// Holdings are drawn from the seed universe and weighted by market cap.
+    pub fn etf_profile(&self, symbol: &str) -> Option<EtfProfile> {
+        derivatives::etf_profile(symbol, &self.inner.instruments, |s| {
+            derivatives::cap_of(self.inner.fundamentals.get(s))
+        })
+    }
+
+    /// All designated synthetic ETF profiles, ascending by symbol.
+    pub fn etfs(&self) -> Vec<EtfProfile> {
+        derivatives::etf_profiles(&self.inner.instruments, |s| {
+            derivatives::cap_of(self.inner.fundamentals.get(s))
+        })
+    }
+
+    /// `true` if `symbol` (case-insensitive) is a designated synthetic ETF.
+    pub fn is_etf(&self, symbol: &str) -> bool {
+        derivatives::is_etf(symbol)
     }
 
     // ---- Realtime ----------------------------------------------------------

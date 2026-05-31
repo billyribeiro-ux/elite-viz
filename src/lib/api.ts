@@ -10,6 +10,7 @@ import type {
 	BacktestResult,
 	Bar,
 	BBandPoint,
+	EtfProfile,
 	FieldInfo,
 	Fundamentals,
 	GroupBy,
@@ -19,6 +20,7 @@ import type {
 	Instrument,
 	MacdPoint,
 	NewsItem,
+	OptionChain,
 	PortfolioSummary,
 	Position,
 	Preset,
@@ -449,4 +451,34 @@ export async function runBacktest(
 			body: JSON.stringify(req)
 		})
 	);
+}
+
+// ---- options chain --------------------------------------------------------
+
+/** Options chain for a symbol; optionally filter by expiries/strikes. */
+export async function getOptionChain(
+	symbol: string,
+	opts: { expiries?: string[]; strikes?: number[] } = {},
+	fetchFn: FetchLike = fetch
+): Promise<OptionChain> {
+	const params = new URLSearchParams();
+	if (opts.expiries?.length) params.set('expiries', opts.expiries.join(','));
+	if (opts.strikes?.length) params.set('strikes', opts.strikes.join(','));
+	const qs = params.toString();
+	return json<OptionChain>(
+		await fetchFn(`/api/v1/options/${encodeURIComponent(symbol)}${qs ? `?${qs}` : ''}`)
+	);
+}
+
+// ---- ETFs -----------------------------------------------------------------
+
+/** List of ETF profiles. Tolerates a bare array or `{ items }` wrapper. */
+export async function getEtfs(fetchFn: FetchLike = fetch): Promise<EtfProfile[]> {
+	const body = await json<{ items?: EtfProfile[] } | EtfProfile[]>(await fetchFn('/api/v1/etf'));
+	return Array.isArray(body) ? body : (body.items ?? []);
+}
+
+/** A single ETF profile by symbol (404 if not an ETF). */
+export async function getEtf(symbol: string, fetchFn: FetchLike = fetch): Promise<EtfProfile> {
+	return json<EtfProfile>(await fetchFn(`/api/v1/etf/${encodeURIComponent(symbol)}`));
 }

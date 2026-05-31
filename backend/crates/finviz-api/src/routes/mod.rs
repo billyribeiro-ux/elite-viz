@@ -3,11 +3,13 @@
 pub mod alerts;
 pub mod auth;
 pub mod backtest;
+pub mod etf;
 pub mod export;
 pub mod groups;
 pub mod indicators;
 pub mod market_data;
 pub mod news;
+pub mod options;
 pub mod portfolio;
 pub mod saved_screens;
 pub mod screener;
@@ -59,6 +61,11 @@ pub fn api_router() -> Router<AppState> {
         .route("/backtest/rules", get(backtest::rules))
         // groups
         .route("/groups", get(groups::list))
+        // options chain
+        .route("/options/{symbol}", get(options::chain))
+        // ETF analysis
+        .route("/etf", get(etf::list))
+        .route("/etf/{symbol}", get(etf::get))
         // CSV export
         .route("/export/screener", post(export::screener))
         .route("/export/groups", get(export::groups))

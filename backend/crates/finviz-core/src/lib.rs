@@ -2,6 +2,7 @@
 //! in-memory market dataset (the storage-backed implementation lands later).
 
 pub mod config;
+pub mod derivatives;
 pub mod news;
 pub mod seed;
 pub mod state;

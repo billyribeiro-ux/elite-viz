@@ -336,3 +336,47 @@ export interface AnalystRating {
 	price_target: number | null;
 	ts: number;
 }
+
+// ---- options chain --------------------------------------------------------
+
+/** A single options contract from `/api/v1/options/{symbol}`. */
+export interface OptionContract {
+	contract: string;
+	kind: 'call' | 'put';
+	strike: number;
+	expiry: string;
+	bid: number;
+	ask: number;
+	last: number;
+	volume: number;
+	open_interest: number;
+	implied_vol: number;
+	delta: number;
+}
+
+/** An options chain from `/api/v1/options/{symbol}`. */
+export interface OptionChain {
+	symbol: string;
+	underlying_price: number;
+	expiries: string[];
+	contracts: OptionContract[];
+}
+
+// ---- ETFs -----------------------------------------------------------------
+
+/** A single ETF holding. */
+export interface EtfHolding {
+	symbol: string;
+	name: string;
+	weight: number;
+}
+
+/** An ETF profile from `/api/v1/etf` (list) or `/api/v1/etf/{symbol}`. */
+export interface EtfProfile {
+	symbol: string;
+	name: string;
+	holdings: EtfHolding[];
+	expense_ratio: number;
+	aum: number;
+	category: string;
+}

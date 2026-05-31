@@ -345,6 +345,64 @@ pub struct AnalystRating {
     pub ts: i64,
 }
 
+/// A single synthetic option contract (one strike / expiry / side).
+///
+/// Pricing is *illustrative only* — a crude intrinsic-plus-time-value sketch,
+/// not a real options-pricing model. See `finviz_core::derivatives` for the
+/// (approximate) formulas.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct OptionContract {
+    /// OCC-style contract id, e.g. `AAPL250117C00210000`.
+    pub contract: String,
+    /// `"call"` or `"put"`.
+    pub kind: String,
+    pub strike: f64,
+    /// Expiry date, `YYYY-MM-DD`.
+    pub expiry: String,
+    pub bid: f64,
+    pub ask: f64,
+    pub last: f64,
+    pub volume: i64,
+    pub open_interest: i64,
+    /// Implied volatility as a fraction (e.g. `0.35` == 35%).
+    pub implied_vol: f64,
+    /// Rough option delta: calls in `0..1`, puts in `-1..0`, ATM ≈ ±0.5.
+    pub delta: f64,
+}
+
+/// A synthetic option chain for one underlying across several expiries.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct OptionChain {
+    pub symbol: Symbol,
+    pub underlying_price: f64,
+    /// The distinct expiry dates present in `contracts`, ascending.
+    pub expiries: Vec<String>,
+    pub contracts: Vec<OptionContract>,
+}
+
+/// A single holding inside a synthetic ETF.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EtfHolding {
+    pub symbol: Symbol,
+    pub name: String,
+    /// Portfolio weight, in percent (the holdings sum to ≈ 100).
+    pub weight: f64,
+}
+
+/// A synthetic ETF profile: descriptive metadata plus its top holdings.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EtfProfile {
+    pub symbol: Symbol,
+    pub name: String,
+    pub holdings: Vec<EtfHolding>,
+    /// Annual expense ratio, in percent (e.g. `0.09`).
+    pub expense_ratio: f64,
+    /// Assets under management, in dollars.
+    pub aum: f64,
+    /// Broad category label, e.g. `Large Blend` or `Technology`.
+    pub category: String,
+}
+
 /// A price/metric alert: a screener expression evaluated against one symbol.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Alert {

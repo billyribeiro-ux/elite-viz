@@ -31,8 +31,8 @@ dropped — every gap is captured as a tracked wave below.
 | Quote detail | quote+chart+insider+ratings+news+financials | quote+chart+stats | 🟡 |
 | Insider trading | tables + map | per-symbol table | 🟡 |
 | Analyst ratings | tables | per-symbol table | ✅ |
-| Options chain | view + export | ❌ | ❌ |
-| ETF analysis | holdings + treemap | ❌ | ❌ |
+| Options chain | view + export | per-symbol chain (calls/puts) | ✅ |
+| ETF analysis | holdings + treemap | profiles + holdings treemap | ✅ |
 | Futures/Forex/Crypto | prices + heatmaps | ❌ | ❌ |
 | Real-time/premarket/AH | yes | jittered WS + pluggable providers | 🟡 |
 | Auth (JWT) | account | ✅ | ✅ |
@@ -106,7 +106,7 @@ set, and register them as screener fields.
 - Persist user-saved screens (in-memory store + CRUD + UI).
 - Screener-match notifications surfaced in UI (poll `/alerts/check` model).
 
-### Wave 7 — Options chain + ETF analysis
+### Wave 7 — Options chain + ETF analysis  ✅ DONE
 - Synthetic options chain (`routes/options.rs`) + `/symbol` options tab.
 - ETF holdings + treemap (`routes/etf.rs`) + `/etf/[symbol]` page.
 

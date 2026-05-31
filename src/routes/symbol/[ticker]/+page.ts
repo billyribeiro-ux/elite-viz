@@ -9,6 +9,7 @@ import {
 	getInsiderTrades,
 	getInstruments,
 	getNews,
+	getOptionChain,
 	getQuote
 } from '$lib/api';
 import type {
@@ -16,7 +17,8 @@ import type {
 	BBandPoint,
 	IndicatorSeries,
 	InsiderTrade,
-	NewsItem
+	NewsItem,
+	OptionChain
 } from '$lib/types';
 
 const LIMIT = 120;
@@ -41,7 +43,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
 	const instrument = instruments.find((i) => i.symbol === symbol) ?? null;
 
 	// Extended indicators are best-effort enhancements; null on failure.
-	const [ema, rsi, bbands, news, insider, ratings] = await Promise.all([
+	const [ema, rsi, bbands, news, insider, ratings, options] = await Promise.all([
 		getIndicator('ema', symbol, { period: 20, limit: LIMIT }, fetch).catch(
 			() => null as IndicatorSeries | null
 		),
@@ -51,7 +53,8 @@ export const load: PageLoad = async ({ params, fetch }) => {
 		getBBands(symbol, { period: 20, limit: LIMIT }, fetch).catch(() => [] as BBandPoint[]),
 		getNews(symbol, 10, fetch).catch(() => [] as NewsItem[]),
 		getInsiderTrades(symbol, fetch).catch(() => [] as InsiderTrade[]),
-		getAnalystRatings(symbol, fetch).catch(() => [] as AnalystRating[])
+		getAnalystRatings(symbol, fetch).catch(() => [] as AnalystRating[]),
+		getOptionChain(symbol, {}, fetch).catch(() => null as OptionChain | null)
 	]);
 
 	return {
@@ -66,6 +69,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
 		instrument,
 		news,
 		insider,
-		ratings
+		ratings,
+		options
 	};
 };
