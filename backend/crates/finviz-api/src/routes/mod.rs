@@ -11,6 +11,7 @@ pub mod indicators;
 pub mod market_data;
 pub mod news;
 pub mod options;
+pub mod patterns;
 pub mod portfolio;
 pub mod saved_screens;
 pub mod screener;
@@ -64,6 +65,8 @@ pub fn api_router() -> Router<AppState> {
         .route("/groups", get(groups::list))
         // options chain
         .route("/options/{symbol}", get(options::chain))
+        // chart patterns
+        .route("/patterns/{symbol}", get(patterns::detect))
         // ETF analysis
         .route("/etf", get(etf::list))
         .route("/etf/{symbol}", get(etf::get))

@@ -18,9 +18,9 @@ dropped — every gap is captured as a tracked wave below.
 | Screener views/tabs | 11 (Overview…TA) | 1 table view | 🟡 |
 | Saved screens | save + 200 presets | save/load/delete + presets | ✅ |
 | CSV/Excel export | yes | screener/groups/portfolio CSV | ✅ |
-| Charts | candles, intraday, studies, patterns | SVG line + SMA overlay | 🟡 |
+| Charts | candles, intraday, studies, patterns | SVG line/area + SMA/EMA/BBands + RSI + pattern summary | 🟡 |
 | Indicators | SMA/EMA/RSI/MACD/BBands/Stoch/ATR | SMA, RSI | 🟡 |
-| Pattern recognition | channels/wedges/triangles/H&S | ❌ | ❌ |
+| Pattern recognition | channels/wedges/triangles/H&S | detector + /patterns + UI | ✅ |
 | Backtesting | 20y, win-rate, drawdown, Sharpe/Calmar | ❌ | ❌ |
 | Maps / heatmaps | sector/theme/52w/drawdown | ❌ | ❌ |
 | Groups | sector/industry/country/cap aggregation | ❌ | ❌ |
@@ -113,7 +113,7 @@ set, and register them as screener fields.
 ### Wave 8 — Futures / Forex / Crypto boards  ✅ DONE
 - Synthetic boards + heatmaps + pages.
 
-### Wave 9 — Pattern recognition
+### Wave 9 — Pattern recognition  ✅ DONE
 - Detect channels/wedges/triangles/H&S/double-top from bar series; annotate
   charts; add as screener signals.
 

@@ -6,6 +6,7 @@
 		compactNumber,
 		marketCap,
 		optional,
+		patternLabel,
 		percent,
 		price,
 		shortDate,
@@ -64,6 +65,16 @@
 
 	const rsiPoints = $derived<IndicatorPoint[]>(data.rsi?.points ?? []);
 	const latestRsi = $derived(rsiPoints.length ? rsiPoints[rsiPoints.length - 1].value : null);
+
+	// Detected chart patterns — best-effort enrichment, sorted by confidence desc.
+	const patterns = $derived(
+		[...(data.patterns ?? [])].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+	);
+
+	function confidencePct(c: number): number {
+		if (!Number.isFinite(c)) return 0;
+		return Math.max(0, Math.min(100, Math.round(c * 100)));
+	}
 
 	const stats = $derived([
 		{ label: 'Market Cap', value: marketCap(data.fundamentals.market_cap) },
@@ -232,6 +243,32 @@
 
 {#if overlay === 'bbands' && bbMiddle.length}
 	<p class="caption">Bollinger middle = SMA basis; envelope shaded.</p>
+{/if}
+
+{#if patterns.length > 0}
+	<section class="patterns" aria-label="Detected patterns">
+		<h3>Detected patterns</h3>
+		<ul class="pattern-list">
+			{#each patterns as p, i (p.kind + '-' + p.start_ts + '-' + i)}
+				{@const conf = confidencePct(p.confidence)}
+				<li class="pattern">
+					<div class="pattern-head">
+						<span class="pattern-kind">{patternLabel(p.kind)}</span>
+						<span class="pattern-conf" title="Confidence">
+							<span class="conf-bar" aria-hidden="true">
+								<span class="conf-fill" style="width: {conf}%"></span>
+							</span>
+							<span class="conf-pct">{conf}%</span>
+						</span>
+					</div>
+					<span class="pattern-range">{shortDate(p.start_ts)} – {shortDate(p.end_ts)}</span>
+					{#if p.description}
+						<p class="pattern-desc">{p.description}</p>
+					{/if}
+				</li>
+			{/each}
+		</ul>
+	</section>
 {/if}
 
 {#if hasRsi}
@@ -505,6 +542,79 @@
 		margin: 0.4rem 0 0;
 		color: var(--muted);
 		font-size: 0.75rem;
+	}
+	.patterns {
+		margin-top: 1.25rem;
+	}
+	.patterns h3 {
+		margin: 0 0 0.6rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: var(--muted);
+		text-transform: uppercase;
+		letter-spacing: 0.4px;
+	}
+	.pattern-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+		gap: 0.6rem;
+	}
+	.pattern {
+		background: var(--panel);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		padding: 0.7rem 0.8rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+	.pattern-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.6rem;
+	}
+	.pattern-kind {
+		font-weight: 600;
+		font-size: 0.9rem;
+		color: var(--text);
+	}
+	.pattern-conf {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		flex: 0 0 auto;
+	}
+	.conf-bar {
+		width: 48px;
+		height: 5px;
+		border-radius: 3px;
+		background: var(--panel-2);
+		overflow: hidden;
+	}
+	.conf-fill {
+		display: block;
+		height: 100%;
+		background: var(--accent);
+	}
+	.conf-pct {
+		font-size: 0.78rem;
+		font-variant-numeric: tabular-nums;
+		color: var(--muted);
+	}
+	.pattern-range {
+		font-size: 0.75rem;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+	.pattern-desc {
+		margin: 0;
+		font-size: 0.82rem;
+		line-height: 1.4;
+		color: var(--text);
 	}
 	.rsi {
 		margin-top: 1rem;

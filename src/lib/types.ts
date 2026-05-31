@@ -362,6 +362,31 @@ export interface OptionChain {
 	contracts: OptionContract[];
 }
 
+// ---- pattern recognition --------------------------------------------------
+
+/** Known chart-pattern kinds (casing may vary; treated as a hint, not a hard set). */
+export type PatternKind =
+	| 'channelUp'
+	| 'channelDown'
+	| 'triangleAscending'
+	| 'triangleDescending'
+	| 'triangleSymmetric'
+	| 'wedge'
+	| 'doubleTop'
+	| 'doubleBottom'
+	| 'headAndShoulders';
+
+/** A detected chart pattern from `/api/v1/patterns/{symbol}`. */
+export interface Pattern {
+	/** One of the known `PatternKind` values, or any raw string the backend emits. */
+	kind: PatternKind | string;
+	start_ts: number;
+	end_ts: number;
+	/** Confidence in 0..1. */
+	confidence: number;
+	description: string;
+}
+
 // ---- markets (futures / forex / crypto) -----------------------------------
 
 /** A tradable asset row from `/api/v1/{futures,forex,crypto}`. */

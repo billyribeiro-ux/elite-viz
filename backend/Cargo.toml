@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/finviz-types",
+    "crates/finviz-patterns",
     "crates/finviz-screener",
     "crates/finviz-core",
     "crates/finviz-backtest",
@@ -31,6 +32,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # internal
 finviz-types = { path = "crates/finviz-types" }
+finviz-patterns = { path = "crates/finviz-patterns" }
 finviz-screener = { path = "crates/finviz-screener" }
 finviz-core = { path = "crates/finviz-core" }
 finviz-backtest = { path = "crates/finviz-backtest" }

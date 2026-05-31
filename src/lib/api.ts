@@ -22,6 +22,7 @@ import type {
 	MarketAsset,
 	NewsItem,
 	OptionChain,
+	Pattern,
 	PortfolioSummary,
 	Position,
 	Preset,
@@ -325,6 +326,26 @@ export async function getAnalystRatings(
 ): Promise<AnalystRating[]> {
 	const body = await json<{ items?: AnalystRating[] } | AnalystRating[]>(
 		await fetchFn(`/api/v1/market-data/ratings/${encodeURIComponent(symbol)}`)
+	);
+	return Array.isArray(body) ? body : (body.items ?? []);
+}
+
+// ---- pattern recognition --------------------------------------------------
+
+/**
+ * Detected chart patterns for a symbol. Best-effort: tolerates either a bare
+ * `Pattern[]` or a `{ items: Pattern[] }` wrapper as the backend shape settles.
+ */
+export async function getPatterns(
+	symbol: string,
+	opts: { limit?: number } = {},
+	fetchFn: FetchLike = fetch
+): Promise<Pattern[]> {
+	const params = new URLSearchParams();
+	if (opts.limit) params.set('limit', String(opts.limit));
+	const qs = params.toString();
+	const body = await json<{ items?: Pattern[] } | Pattern[]>(
+		await fetchFn(`/api/v1/patterns/${encodeURIComponent(symbol)}${qs ? `?${qs}` : ''}`)
 	);
 	return Array.isArray(body) ? body : (body.items ?? []);
 }

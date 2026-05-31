@@ -57,6 +57,28 @@ export function shortDate(tsSeconds: number | null | undefined): string {
 	return dateFmt.format(new Date(tsSeconds * 1000));
 }
 
+/** Nice labels for known chart-pattern kinds (keyed by lowercased kind). */
+const patternLabels: Record<string, string> = {
+	channelup: 'Channel Up',
+	channeldown: 'Channel Down',
+	triangleascending: 'Ascending Triangle',
+	triangledescending: 'Descending Triangle',
+	trianglesymmetric: 'Symmetric Triangle',
+	wedge: 'Wedge',
+	doubletop: 'Double Top',
+	doublebottom: 'Double Bottom',
+	headandshoulders: 'Head & Shoulders'
+};
+
+/**
+ * Humanizes a pattern `kind` to a display label (case-insensitive match on the
+ * known kinds), falling back to the raw kind string when unrecognized.
+ */
+export function patternLabel(kind: string): string {
+	if (!kind) return '—';
+	return patternLabels[kind.toLowerCase()] ?? kind;
+}
+
 /**
  * Epoch-seconds → relative phrase for recent times ("just now", "5m ago",
  * "3h ago", "2d ago"), falling back to a short date+time for older items.
