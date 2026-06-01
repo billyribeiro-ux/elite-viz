@@ -3,34 +3,50 @@
 A stock-screener / market-data visualization platform: a **Rust + Axum**
 backend serving a **SvelteKit (Svelte 5)** dashboard.
 
-> Status: **working end-to-end** — screener engine, full REST API, realtime
-> WebSocket quotes, and a multi-page dashboard (screener, symbol detail with
-> charts, portfolio, watchlists) on a synthetic in-memory dataset, plus a
-> feature-gated Postgres layer, Docker, and CI. See [`PLAN.md`](./PLAN.md) for
-> the roadmap and [`docs/`](./docs) for the spec overview this was built from.
+> Status: **complete & running end-to-end** on a deterministic synthetic dataset
+> — no credentials required. A 10-wave FINVIZ-parity build delivered 13 pages
+> (screener, groups, map heatmap, markets, backtest, news, portfolio,
+> watchlists, alerts, settings, login, symbol detail, ETF) over an 8-crate
+> Rust + Axum workspace (~40 REST endpoints + 2 WebSocket streams), with JWT
+> auth, CSV export, and a feature-gated Postgres layer. CI runs fmt, clippy
+> `-D warnings`, tests, and the SvelteKit check/build on every push.
+>
+> ### ▶ The only step left to go live: **[`docs/GO_LIVE.md`](./docs/GO_LIVE.md)**
+> Paste your market-data provider's API key (Finnhub / Polygon.io) or a
+> webhook URL (Generic) into **Settings → Data Provider**, hit Test, and Save.
+>
+> See [`docs/GAP_ANALYSIS_AND_PLAN.md`](./docs/GAP_ANALYSIS_AND_PLAN.md) for the
+> full FINVIZ feature scorecard and the wave-by-wave build log.
 
 ## What works today
 
-- **Filter DSL** — `price > 100 and pe < 30 and sector = "Technology"` with
-  `and` / `or` / `not`, parentheses, comparison + substring (`~`) operators.
-  Compiled by a hand-written lexer → parser → evaluator (and a parameterized
-  SQL compiler for the upcoming Postgres path).
-- **REST API** — market-data (quotes, bars, fundamentals, instruments),
-  screener (run / fields / presets), and indicators (SMA, RSI), with CORS,
-  request tracing, and graceful shutdown.
-- **Dashboard** — filter bar with one-click presets, sortable results table,
-  trend coloring; server-rendered then interactive. Talks to the backend
-  through a same-origin SvelteKit proxy.
-- **Symbol detail** — OHLCV price chart with SMA overlay, key stats, and a
-  **live price** streamed over WebSocket.
-- **Portfolio & watchlists** — valuation with unrealized P&L; watchlist
-  create/delete.
-- **Pluggable data provider** — a Settings screen where you pick a provider
-  (Finnhub, Polygon.io, or a generic HTTP/webhook endpoint), enter your API key
-  or URL, test the connection, and go live. The API key is write-only (masked
-  after saving) and the platform falls back to demo data if a live call fails.
-- **Persistence (scaffolded)** — `finviz-db` crate + SQL migrations behind the
-  `postgres` feature; the server still defaults to the in-memory store.
+- **Screener** — filter DSL (`price > 100 and pe < 30 and sector = "Technology"`,
+  with `and`/`or`/`not`, parentheses, comparison + `~` substring) over **56
+  fields** (descriptive, valuation, profitability, financial health, ownership,
+  performance, technical); presets/signals, column sorting, **live mode** (WS),
+  and **shareable deep-link URLs**. Hand-written lexer → parser → evaluator plus
+  a parameterized SQL compiler for the Postgres path.
+- **Groups & Map** — sector/industry/country aggregation and a FINVIZ-style
+  heatmap (tile size ∝ market cap, color ∝ performance window).
+- **Charts & indicators** — price chart with SMA/EMA/Bollinger overlays + RSI
+  panel; SMA, EMA, RSI, MACD, Bollinger Bands, ATR endpoints.
+- **Backtesting** — rule-based strategies (SMA cross / price-vs-SMA / RSI) with
+  time-exit + stop-loss; metrics: total/avg return, win rate, max drawdown,
+  Sharpe, Calmar; equity curve + trades table.
+- **Symbol detail** — quote + chart + **detected chart patterns** + tabs for
+  News / Insider / Ratings / Options chain; **live price** over WebSocket.
+- **Markets** — Futures / Forex / Crypto boards with heat-strips.
+- **News / Insider / Ratings** — aggregated market + per-ticker feeds.
+- **Portfolio & watchlists** — valuation with unrealized P&L; CRUD.
+- **Alerts** — screener-expression alerts with triggered evaluation.
+- **Auth** — JWT register/login/me/refresh (Argon2).
+- **Export** — CSV for screener / groups / portfolio; **saved screens**.
+- **Pluggable data provider** — Settings screen to enter a provider API key
+  (Finnhub / Polygon.io) or webhook URL (Generic), test, and go live. Keys are
+  write-only (masked) and the platform falls back to demo data on any live error.
+- **Persistence** — `finviz-db` crate + SQL migrations behind the `postgres`
+  feature, materializing the full 56-field surface; default build stays
+  in-memory and dependency-free.
 
 ## Architecture
 
