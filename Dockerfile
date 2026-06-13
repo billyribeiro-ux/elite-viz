@@ -1,6 +1,6 @@
 # Multi-stage build for the SvelteKit (adapter-node) frontend.
 # Build context: the repository root.
-FROM node:22-slim AS build
+FROM node:24.16.0-slim AS build
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
@@ -8,7 +8,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm run build
 
-FROM node:22-slim
+FROM node:24.16.0-slim
 WORKDIR /app
 ENV NODE_ENV=production
 # adapter-node emits a self-contained server in ./build.

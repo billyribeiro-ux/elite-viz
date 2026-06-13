@@ -65,7 +65,7 @@ later phases (see `PLAN.md`).
 
 ## Running locally
 
-Requires Rust (stable) and Node 22+ with **pnpm**.
+Requires Rust 1.94+ (stable) and Node 24.16.0 LTS (see `.nvmrc`) with **pnpm 11+**.
 
 ```bash
 # 1. Backend — http://localhost:8080
